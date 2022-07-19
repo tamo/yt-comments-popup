@@ -1,11 +1,16 @@
 const DEBUG = false;
-const API_KEY = ''; // Use yours
 const CTRL = 17;
 const MAXCOMLEN = 150;
-const MAXCOMNUM = 10;
-const COMORDER = 'relevance';
 const MAXWIDTHR = 0.5;
 const MAXHEIGHTR = 0.7;
+
+const params = new URLSearchParams({
+	key: "", //Use your API key
+	maxResults: 10,
+	order: "relevance",
+	part: "snippet",
+	textFormat: "plaintext"
+});
 const cache = {};
 let pressed = false;
 
@@ -16,11 +21,7 @@ function fetchComments(videoId) {
 		});
 	}
 	const url = 'https://www.googleapis.com/youtube/v3/commentThreads'
-			+ '?part=snippet&textFormat=plaintext'
-			+ '&key=' + API_KEY
-			+ '&order=' + COMORDER
-			+ '&maxResults=' + MAXCOMNUM
-			+ '&videoId=' + videoId;
+			+ '?' + params + '&videoId=' + videoId;
 	return fetch(url).then(response => {
 		if(!response.ok)
 			throw new Error('response is not ok');
