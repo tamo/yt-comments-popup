@@ -35,8 +35,6 @@ function fetchComments(videoId) {
 			comments += "<li>" + comment.substring(0, MAXCOMLEN) + "</li>";
 		}
 		return cache[videoId] = comments;
-	}).catch(error => {
-		console.log("failed to fetch json: ", error);
 	});
 }
 
@@ -85,7 +83,8 @@ function mouseEnterListener(event) {
 		popup.style.top = ((curY + popH > fullH) ? fullH - popH : curY) + 'px';
 		popup.style.visibility = "visible";
 	}).catch(error => {
-		console.log("error: ", error);
+		if (DEBUG == true)
+			console.log(error);
 	});
 }
 
