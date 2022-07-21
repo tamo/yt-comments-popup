@@ -1,10 +1,11 @@
 const DEBUG = false;
 const CTRL = 17;
 const MAXCOMLEN = 150;
+const POPUPDELAY = 800;
 const MAXWIDTHR = 0.5;
 const MAXHEIGHTR = 0.7;
 
-const params = new URLSearchParams({
+const PARAMS = new URLSearchParams({
 	key: "", //Use your API key
 	maxResults: 10,
 	order: "relevance",
@@ -12,7 +13,10 @@ const params = new URLSearchParams({
 	textFormat: "plaintext"
 });
 const cache = {};
+let timeout = undefined;
 let pressed = false;
+let mouseX = 0;
+let mouseY = 0;
 
 function fetchComments(videoId) {
 	if (cache[videoId]) {
@@ -21,10 +25,10 @@ function fetchComments(videoId) {
 		});
 	}
 	const url = 'https://www.googleapis.com/youtube/v3/commentThreads'
-			+ '?' + params + '&videoId=' + videoId;
+			+ '?' + PARAMS + '&videoId=' + videoId;
 	return fetch(url).then(response => {
 		if(!response.ok)
-			throw new Error('response is not ok');
+			return {items: []};
 		return response.json();
 	}).then(json => {
 		if (DEBUG == true)
@@ -35,6 +39,8 @@ function fetchComments(videoId) {
 			const comment = item.snippet.topLevelComment.snippet.textDisplay;
 			comments += "<li>" + comment.substring(0, MAXCOMLEN) + "</li>";
 		}
+		if (comments == "")
+			comments = "<p>no comments</p>";
 		return cache[videoId] = comments;
 	});
 }
@@ -51,16 +57,19 @@ function mouseEnterListener(event) {
 		console.log("mouseenter: ", vid);
 
 	fetchComments(vid).then(comments => {
+		if (timeout)
+			clearTimeout(timeout);
+		timeout = undefined;
 		if (pressed)
 			return;
-		const fullW = document.documentElement.clientWidth;
-		const fullH = document.documentElement.clientHeight;
 
 		const popup = document.createElement("tooltip");
 		popup.innerHTML = comments;
 		popup.style.visibility = "hidden";
 		popup.style.display = "block";
 		popup.style.position = "fixed";
+		const fullW = document.documentElement.clientWidth;
+		const fullH = document.documentElement.clientHeight;
 		popup.style.maxWidth = (fullW * MAXWIDTHR) + 'px';
 		popup.style.maxHeight = (fullH * MAXHEIGHTR) + 'px';
 		popup.style.left = 0;
@@ -76,14 +85,17 @@ function mouseEnterListener(event) {
 		removeTips();
 		document.body.appendChild(popup);
 
-		const popW = popup.offsetWidth;
-		const popH = popup.offsetHeight;
-		const curX = event.clientX + 10;
-		const curY = event.clientY + 10;
-		popup.style.left = ((curX + popW > fullW) ? fullW - popW : curX) + 'px';
-		popup.style.top = ((curY + popH > fullH) ? fullH - popH : curY) + 'px';
-		popup.style.visibility = "visible";
+		timeout = setTimeout(function(popup){
+			const fullW = document.documentElement.clientWidth;
+			const fullH = document.documentElement.clientHeight;
+			const popW = popup.offsetWidth;
+			const popH = popup.offsetHeight;
+			popup.style.left = ((mouseX + popW > fullW) ? fullW - popW : mouseX) + 'px';
+			popup.style.top = ((mouseY + popH > fullH) ? fullH - popH : mouseY) + 'px';
+			popup.style.visibility = "visible";
+		}, POPUPDELAY, popup);
 	}).catch(error => {
+		removeTips();
 		if (DEBUG == true)
 			console.log(error);
 	});
@@ -93,6 +105,11 @@ function removeTips() {
 	for (let tip of document.body.getElementsByTagName("tooltip")) {
 		tip.remove();
 	}
+}
+
+function mouseMoveListener(event) {
+	mouseX = event.clientX + 10;
+	mouseY = event.clientY + 10;
 }
 
 function keyDownListener(event) {
@@ -108,5 +125,6 @@ function keyUpListener(event) {
 }
 
 document.addEventListener("mouseenter", mouseEnterListener, true);
+document.addEventListener("mousemove", mouseMoveListener);
 document.addEventListener("keydown", keyDownListener);
 document.addEventListener("keyup", keyUpListener);
