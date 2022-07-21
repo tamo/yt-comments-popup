@@ -77,6 +77,7 @@ function mouseEnterListener(event) {
 		popup.style.zIndex = 9999999;
 		popup.style.backgroundColor = "black";
 		popup.style.color = "white";
+		popup.style.boxShadow = "0 0 5px 2px rgba(255,255,255,0.5)";
 
 		popup.onmouseleave = function(){this.remove();};
 		popup.onclick = function(){this.remove();};
