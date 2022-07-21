@@ -45,14 +45,23 @@ function fetchComments(videoId) {
 	});
 }
 
+function getVideoId(url) {
+	if (!url.match(/^https:\/\/www\.youtube\.com\/watch\?v=[^&]/))
+		return;
+	return url.replace(/^https:\/\/www\.youtube\.com\/watch\?v=([^&]+)(&.*)?$/, '$1');
+}
+
 function mouseEnterListener(event) {
 	const anchor = event.target;
 	if (anchor.tagName != "A")
 		return;
-	if (!anchor.href.match(/^https:\/\/www\.youtube\.com\/watch\?v=[^&]/))
-		return
-	const vid = anchor.href
-		.replace(/^https:\/\/www\.youtube\.com\/watch\?v=([^&]+)(&.*)?$/, '$1');
+	if (anchor.role == "button")
+		return;
+	const vid = getVideoId(anchor.href);
+	if (!vid)
+		return;
+	if (vid == getVideoId(location.href))
+		return;
 	if (DEBUG == true)
 		console.log("mouseenter: ", vid);
 
@@ -95,6 +104,7 @@ function mouseEnterListener(event) {
 			popup.style.top = ((mouseY + popH > fullH) ? fullH - popH : mouseY) + 'px';
 			popup.style.visibility = "visible";
 		}, POPUPDELAY, popup);
+		anchor.onmouseleave = function(){clearTimeout(timeout);};
 	}).catch(error => {
 		removeTips();
 		if (DEBUG == true)
