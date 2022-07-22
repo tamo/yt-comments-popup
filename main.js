@@ -6,7 +6,6 @@ const MAXWIDTHR = 0.5;
 const MAXHEIGHTR = 0.7;
 
 const PARAMS = new URLSearchParams({
-	key: "", //Use your API key
 	maxResults: 10,
 	order: "relevance",
 	part: "snippet",
@@ -18,14 +17,14 @@ let pressed = false;
 let mouseX = 0;
 let mouseY = 0;
 
-function fetchComments(videoId) {
+function fetchComments(videoId, apiKey) {
 	if (cache[videoId]) {
 		return new Promise((resolve, reject) => {
 			resolve(cache[videoId]);
 		});
 	}
 	const url = 'https://www.googleapis.com/youtube/v3/commentThreads'
-			+ '?' + PARAMS + '&videoId=' + videoId;
+			+ '?' + PARAMS + '&videoId=' + videoId + '&key=' + apiKey;
 	return fetch(url).then(response => {
 		if(!response.ok)
 			return {items: []};
@@ -65,50 +64,57 @@ function mouseEnterListener(event) {
 	if (DEBUG == true)
 		console.log("mouseenter: ", vid);
 
-	fetchComments(vid).then(comments => {
-		if (timeout)
-			clearTimeout(timeout);
-		timeout = undefined;
-		if (pressed)
+	chrome.storage.local.get("api_key", storage => {
+		const apiKey = storage.api_key;
+		if (!apiKey) {
+			alert("No API key is set.");
 			return;
+		}
+		fetchComments(vid, apiKey).then(comments => {
+			if (timeout)
+				clearTimeout(timeout);
+			timeout = undefined;
+			if (pressed)
+				return;
 
-		const popup = document.createElement("tooltip");
-		popup.innerHTML = comments;
-		popup.style.visibility = "hidden";
-		popup.style.display = "block";
-		popup.style.position = "fixed";
-		const fullW = document.documentElement.clientWidth;
-		const fullH = document.documentElement.clientHeight;
-		popup.style.maxWidth = (fullW * MAXWIDTHR) + 'px';
-		popup.style.maxHeight = (fullH * MAXHEIGHTR) + 'px';
-		popup.style.left = 0;
-		popup.style.top = 0;
-		popup.style.zIndex = 9999999;
-		popup.style.backgroundColor = "black";
-		popup.style.color = "white";
-		popup.style.boxShadow = "0 0 5px 2px rgba(255,255,255,0.5)";
-
-		popup.onmouseleave = function(){this.remove();};
-		popup.onclick = function(){this.remove();};
-		//anchor.onmouseleave = function(){this.remove();}.bind(popup);
-
-		removeTips();
-		document.body.appendChild(popup);
-
-		timeout = setTimeout(function(popup){
+			const popup = document.createElement("tooltip");
+			popup.innerHTML = comments;
+			popup.style.visibility = "hidden";
+			popup.style.display = "block";
+			popup.style.position = "fixed";
 			const fullW = document.documentElement.clientWidth;
 			const fullH = document.documentElement.clientHeight;
-			const popW = popup.offsetWidth;
-			const popH = popup.offsetHeight;
-			popup.style.left = ((mouseX + popW > fullW) ? fullW - popW : mouseX) + 'px';
-			popup.style.top = ((mouseY + popH > fullH) ? fullH - popH : mouseY) + 'px';
-			popup.style.visibility = "visible";
-		}, POPUPDELAY, popup);
-		anchor.onmouseleave = function(){clearTimeout(timeout);};
-	}).catch(error => {
-		removeTips();
-		if (DEBUG == true)
-			console.log(error);
+			popup.style.maxWidth = (fullW * MAXWIDTHR) + 'px';
+			popup.style.maxHeight = (fullH * MAXHEIGHTR) + 'px';
+			popup.style.left = 0;
+			popup.style.top = 0;
+			popup.style.zIndex = 9999999;
+			popup.style.backgroundColor = "black";
+			popup.style.color = "white";
+			popup.style.boxShadow = "0 0 5px 2px rgba(255,255,255,0.5)";
+
+			popup.onmouseleave = function(){this.remove();};
+			popup.onclick = function(){this.remove();};
+			//anchor.onmouseleave = function(){this.remove();}.bind(popup);
+
+			removeTips();
+			document.body.appendChild(popup);
+
+			timeout = setTimeout(function(popup){
+				const fullW = document.documentElement.clientWidth;
+				const fullH = document.documentElement.clientHeight;
+				const popW = popup.offsetWidth;
+				const popH = popup.offsetHeight;
+				popup.style.left = ((mouseX + popW > fullW) ? fullW - popW : mouseX) + 'px';
+				popup.style.top = ((mouseY + popH > fullH) ? fullH - popH : mouseY) + 'px';
+				popup.style.visibility = "visible";
+			}, POPUPDELAY, popup);
+			anchor.onmouseleave = function(){clearTimeout(timeout);};
+		}).catch(error => {
+			removeTips();
+			if (DEBUG == true)
+				console.log(error);
+		});
 	});
 }
 

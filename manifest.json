@@ -4,12 +4,16 @@
 	"description": "Preview YT comments by hovering over links unless Ctrl is pressed",
 	"manifest_version": 3,
 	"permissions": [
-		"activeTab"
+		"activeTab",
+		"storage"
 	],
 	"content_scripts": [
 		{
 			"js": ["main.js"],
 			"matches": ["https://www.youtube.com/*"]
 		}
-	]
+	],
+	"options_ui": {
+		"page": "options.html"
+	}
 }
