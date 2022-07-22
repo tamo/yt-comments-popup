@@ -11,6 +11,17 @@ const PARAMS = new URLSearchParams({
 	part: "snippet",
 	textFormat: "plaintext"
 });
+const TIPSTYLE = {
+	visibility: "hidden",
+	display: "block",
+	position: "fixed",
+	left: 0,
+	top: 0,
+	zIndex: 9999999,
+	backgroundColor: "black",
+	color: "white",
+	boxShadow: "0 0 5px 2px rgba(255,255,255,0.5)"
+};
 const cache = {};
 let timeout = undefined;
 let pressed = false;
@@ -79,19 +90,11 @@ function mouseEnterListener(event) {
 
 			const popup = document.createElement("tooltip");
 			popup.innerHTML = comments;
-			popup.style.visibility = "hidden";
-			popup.style.display = "block";
-			popup.style.position = "fixed";
+			Object.assign(popup.style, TIPSTYLE);
 			const fullW = document.documentElement.clientWidth;
 			const fullH = document.documentElement.clientHeight;
 			popup.style.maxWidth = (fullW * MAXWIDTHR) + 'px';
 			popup.style.maxHeight = (fullH * MAXHEIGHTR) + 'px';
-			popup.style.left = 0;
-			popup.style.top = 0;
-			popup.style.zIndex = 9999999;
-			popup.style.backgroundColor = "black";
-			popup.style.color = "white";
-			popup.style.boxShadow = "0 0 5px 2px rgba(255,255,255,0.5)";
 
 			popup.onmouseleave = function(){this.remove();};
 			popup.onclick = function(){this.remove();};
