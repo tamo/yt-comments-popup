@@ -30,6 +30,7 @@ const TIPSTYLE = {
 
 // global variables
 const cache = {};
+let prevHref = location.href;
 let timeout = undefined;
 let cause = undefined;
 let pressed = false;
@@ -84,21 +85,18 @@ function mouseEnterListener(event) {
 	if (cache[vid]) {
 		if (pressed)
 			return;
-		const tooltips = anchor.getElementsByTagName("tooltip");
-		if (tooltips.length) {
+		const tooltip = document.querySelector('a.' + vid);
+		if (tooltip) {
 			// already has a tooltip
 			// so reuse it by simulating createPopup()
 			hideTips();
-			timeout = setTimeout(function(tooltips){
-				for (let tip of tooltips) {
-					showTip(tip);
-					break;
-				}
-			}, POPUPDELAY, tooltips);
+			timeout = setTimeout(tooltip => {
+				showTip(tooltip);
+			}, POPUPDELAY, tooltip);
 			cause = anchor;
 		} else {
-			// this is an anchor without tooltip
-			// but the comments have been cached before
+			if (DEBUG == true)
+				console.log("inconsistency between cache and dom", cache, vid);
 			createPopup(anchor, cache[vid]);
 		}
 		return;
@@ -132,6 +130,7 @@ function createPopup(anchor, comments) {
 	});
 
 	const popup = document.createElement("tooltip");
+	popup.class = getVideoId(anchor.href);
 	popup.innerHTML = comments;
 	Object.assign(popup.style, TIPSTYLE);
 	const fullW = document.documentElement.clientWidth;
@@ -139,12 +138,12 @@ function createPopup(anchor, comments) {
 	popup.style.maxWidth = (fullW * MAXWIDTHR) + 'px';
 	popup.style.maxHeight = (fullH * MAXHEIGHTR) + 'px';
 
-	popup.onclick = function(){hideTips();};
+	popup.onclick = () => {hideTips();};
 	hideTips();
-	anchor.appendChild(popup);
+	document.body.appendChild(popup);
 	cause = anchor;
 
-	timeout = setTimeout(function(popup){
+	timeout = setTimeout(popup => {
 		showTip(popup);
 	}, POPUPDELAY, popup);
 }
@@ -165,8 +164,14 @@ function hideTips() {
 	clearTimeout(timeout);
 	timeout = undefined;
 	cause = undefined;
+	const classes = {};
 	for (let tip of document.body.getElementsByTagName("tooltip")) {
-		tip.style.visibility = "hidden";
+		if (classes[tip.class]) // duplicated
+			tip.remove();
+		else {
+			tip.style.visibility = "hidden";
+			classes[tip.class] = true;
+		}
 	}
 }
 
@@ -174,7 +179,11 @@ function hideTips() {
 // others are not useful when mouse moves fast
 function mouseMoveListener(event) {
 	const elem = document.elementFromPoint(event.clientX, event.clientY);
-	if (cause && !cause.contains(elem)) // elem can be null
+	if (!elem || // mouse pointer is out of browser
+		(elem.tagName != "TOOLTIP" &&
+			(!elem.parentNode || elem.parentNode.tagName != "TOOLTIP")
+		) && cause && !cause.contains(elem)
+	)
 		hideTips();
 
 	mouseX = event.clientX + OFFSETX;
@@ -192,6 +201,25 @@ function keyUpListener(event) {
 	if (event.keyCode == CTRL)
 		pressed = false;
 }
+
+// wipe tooltips every time href changes
+window.addEventListener("load", () => {
+	const observer = new MutationObserver(mutations => {
+		if (prevHref != location.href) {
+			if (DEBUG == true)
+				console.log("href changed: ", prevHref, " -> ", location.href);
+			clearTimeout(timeout);
+			timeout = undefined;
+			cause = undefined;
+			for (let tip of document.body.getElementsByTagName("tooltip")) {
+				tip.remove();
+			}
+			Object.keys(cache).forEach(key => delete cache[key]);
+			prevHref = location.href;
+		}
+	});
+	observer.observe(document.body, {childList: true, subtree: true});
+});
 
 // set {useCapture: true} to detect all anchors with the single listener
 document.addEventListener("mouseenter", mouseEnterListener, true);
