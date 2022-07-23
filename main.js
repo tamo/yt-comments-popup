@@ -85,7 +85,7 @@ function mouseEnterListener(event) {
 	if (cache[vid]) {
 		if (pressed)
 			return;
-		const tooltip = document.querySelector('a.' + vid);
+		const tooltip = document.querySelector('tooltip.vid_' + vid);
 		if (tooltip) {
 			// already has a tooltip
 			// so reuse it by simulating createPopup()
@@ -130,7 +130,7 @@ function createPopup(anchor, comments) {
 	});
 
 	const popup = document.createElement("tooltip");
-	popup.class = getVideoId(anchor.href);
+	popup.className = "vid_" + getVideoId(anchor.href);
 	popup.innerHTML = comments;
 	Object.assign(popup.style, TIPSTYLE);
 	const fullW = document.documentElement.clientWidth;
@@ -164,13 +164,13 @@ function hideTips() {
 	clearTimeout(timeout);
 	timeout = undefined;
 	cause = undefined;
-	const classes = {};
+	const classNames = {};
 	for (let tip of document.body.getElementsByTagName("tooltip")) {
-		if (classes[tip.class]) // duplicated
+		if (classNames[tip.className]) // duplicated
 			tip.remove();
 		else {
 			tip.style.visibility = "hidden";
-			classes[tip.class] = true;
+			classNames[tip.className] = true;
 		}
 	}
 }
