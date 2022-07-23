@@ -4,7 +4,8 @@ const MAXCOMLEN = 150;
 const POPUPDELAY = 800;
 const MAXWIDTHR = 0.5;
 const MAXHEIGHTR = 0.7;
-
+const OFFSETX = 10;
+const OFFSETY = 10;
 const PARAMS = new URLSearchParams({
 	maxResults: 10,
 	order: "relevance",
@@ -24,16 +25,12 @@ const TIPSTYLE = {
 };
 const cache = {};
 let timeout = undefined;
+let cause = undefined;
 let pressed = false;
 let mouseX = 0;
 let mouseY = 0;
 
 function fetchComments(videoId, apiKey) {
-	if (cache[videoId]) {
-		return new Promise((resolve, reject) => {
-			resolve(cache[videoId]);
-		});
-	}
 	const url = 'https://www.googleapis.com/youtube/v3/commentThreads'
 			+ '?' + PARAMS + '&videoId=' + videoId + '&key=' + apiKey;
 	return fetch(url).then(response => {
@@ -67,6 +64,7 @@ function mouseEnterListener(event) {
 		return;
 	if (anchor.role == "button")
 		return;
+
 	const vid = getVideoId(anchor.href);
 	if (!vid)
 		return;
@@ -75,6 +73,23 @@ function mouseEnterListener(event) {
 	if (DEBUG == true)
 		console.log("mouseenter: ", vid);
 
+	if (cache[vid]) {
+		if (pressed)
+			return;
+		const tooltips = anchor.getElementsByTagName("tooltip");
+		if (tooltips.length) {
+			hideTips();
+			timeout = setTimeout(function(tooltips){
+				for (let tip of tooltips) {
+					showTips(tip);
+				}
+			}, POPUPDELAY, tooltips);
+			cause = anchor;
+		} else {
+			createPopup(anchor, cache[vid]);
+		}
+		return;
+	}
 	chrome.storage.local.get("api_key", storage => {
 		const apiKey = storage.api_key;
 		if (!apiKey) {
@@ -82,59 +97,74 @@ function mouseEnterListener(event) {
 			return;
 		}
 		fetchComments(vid, apiKey).then(comments => {
-			if (timeout)
-				clearTimeout(timeout);
-			timeout = undefined;
 			if (pressed)
 				return;
-
-			const popup = document.createElement("tooltip");
-			popup.innerHTML = comments;
-			Object.assign(popup.style, TIPSTYLE);
-			const fullW = document.documentElement.clientWidth;
-			const fullH = document.documentElement.clientHeight;
-			popup.style.maxWidth = (fullW * MAXWIDTHR) + 'px';
-			popup.style.maxHeight = (fullH * MAXHEIGHTR) + 'px';
-
-			popup.onmouseleave = function(){this.remove();};
-			popup.onclick = function(){this.remove();};
-			//anchor.onmouseleave = function(){this.remove();}.bind(popup);
-
-			removeTips();
-			document.body.appendChild(popup);
-
-			timeout = setTimeout(function(popup){
-				const fullW = document.documentElement.clientWidth;
-				const fullH = document.documentElement.clientHeight;
-				const popW = popup.offsetWidth;
-				const popH = popup.offsetHeight;
-				popup.style.left = ((mouseX + popW > fullW) ? fullW - popW : mouseX) + 'px';
-				popup.style.top = ((mouseY + popH > fullH) ? fullH - popH : mouseY) + 'px';
-				popup.style.visibility = "visible";
-			}, POPUPDELAY, popup);
-			anchor.onmouseleave = function(){clearTimeout(timeout);};
+			createPopup(anchor, comments);
 		}).catch(error => {
-			removeTips();
+			hideTips();
 			if (DEBUG == true)
 				console.log(error);
 		});
 	});
 }
 
-function removeTips() {
+function createPopup(anchor, comments) {
+	anchor.title = "";
+	anchor.querySelectorAll('*').forEach(child => {
+		child.title = "";
+	});
+	const popup = document.createElement("tooltip");
+	popup.innerHTML = comments;
+	Object.assign(popup.style, TIPSTYLE);
+	const fullW = document.documentElement.clientWidth;
+	const fullH = document.documentElement.clientHeight;
+	popup.style.maxWidth = (fullW * MAXWIDTHR) + 'px';
+	popup.style.maxHeight = (fullH * MAXHEIGHTR) + 'px';
+
+	//popup.onmouseleave = function(){hideTips();};
+	popup.onclick = function(){hideTips();};
+	hideTips();
+	anchor.appendChild(popup);
+	//anchor.onmouseleave = function(){hideTips();};
+	cause = anchor;
+
+	timeout = setTimeout(function(popup){
+		showTips(popup);
+	}, POPUPDELAY, popup);
+}
+
+function showTips(popup) {
+	const fullW = document.documentElement.clientWidth;
+	const fullH = document.documentElement.clientHeight;
+	const popW = popup.offsetWidth;
+	const popH = popup.offsetHeight;
+	popup.style.left = ((mouseX + popW > fullW) ? fullW - popW
+		: (mouseX < 0 ? 0 : mouseX)) + 'px';
+	popup.style.top = ((mouseY + popH > fullH) ? fullH - popH
+		: (mouseY < 0 ? 0 : mouseY)) + 'px';
+	popup.style.visibility = "visible";
+}
+
+function hideTips() {
+	clearTimeout(timeout);
+	timeout = undefined;
+	cause = undefined;
 	for (let tip of document.body.getElementsByTagName("tooltip")) {
-		tip.remove();
+		tip.style.visibility = "hidden";
 	}
 }
 
 function mouseMoveListener(event) {
-	mouseX = event.clientX + 10;
-	mouseY = event.clientY + 10;
+	const elem = document.elementFromPoint(event.clientX, event.clientY);
+	if (cause && !cause.contains(elem))
+		hideTips();
+	mouseX = event.clientX + OFFSETX;
+	mouseY = event.clientY + OFFSETY;
 }
 
 function keyDownListener(event) {
 	if (event.keyCode == CTRL) {
-		removeTips();
+		hideTips();
 		pressed = true;
 	}
 }
