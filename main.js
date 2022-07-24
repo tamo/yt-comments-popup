@@ -30,7 +30,6 @@ const TIPSTYLE = {
 
 // global variables
 const cache = {};
-let prevHref = location.href;
 let timeout = undefined;
 let cause = undefined;
 let pressed = false;
@@ -47,15 +46,15 @@ function fetchComments(videoId, apiKey) {
 		return response.json();
 	}).then(json => {
 		if (DEBUG == true)
-			console.log("json: ", json);
-		let comments = "";
+			console.log('json: ', json);
+		let comments = '';
 		for (let i = 0; i < json.items.length; i++) {
 			const item = json.items[i];
 			const comment = item.snippet.topLevelComment.snippet.textDisplay;
-			comments += "<li>" + comment.substring(0, MAXCOMLEN) + "</li>";
+			comments += '<li>' + comment.substring(0, MAXCOMLEN) + '</li>';
 		}
-		if (comments == "")
-			comments = "<p>no comments</p>";
+		if (comments == '')
+			comments = '<li>no comments</li>';
 		return cache[videoId] = comments;
 	});
 	// don't catch errors here because the caller does
@@ -69,9 +68,9 @@ function getVideoId(url) {
 
 function mouseEnterListener(event) {
 	const anchor = event.target;
-	if (anchor.tagName != "A")
+	if (anchor.tagName != 'A')
 		return;
-	if (anchor.role == "button") // e.g. next button on player
+	if (anchor.role == 'button') // e.g. next button on player
 		return;
 
 	const vid = getVideoId(anchor.href);
@@ -80,7 +79,7 @@ function mouseEnterListener(event) {
 	if (vid == getVideoId(location.href)) // current video
 		return;
 	if (DEBUG == true)
-		console.log("mouseenter: ", vid);
+		console.log('mouseenter: ', vid);
 
 	if (cache[vid]) {
 		if (pressed)
@@ -89,6 +88,9 @@ function mouseEnterListener(event) {
 		if (tooltip) {
 			// already has a tooltip
 			// so reuse it by simulating createPopup()
+			const prefix = cutTitles(anchor);
+			if (prefix && tooltip.children[0].tagName != "P")
+				tooltip.innerHTML = prefix + tooltip.innerHTML;
 			hideTips();
 			timeout = setTimeout(tooltip => {
 				showTip(tooltip);
@@ -96,16 +98,16 @@ function mouseEnterListener(event) {
 			cause = anchor;
 		} else {
 			if (DEBUG == true)
-				console.log("inconsistency between cache and dom", cache, vid);
+				console.log('inconsistency between cache and dom', cache, vid);
 			createPopup(anchor, cache[vid]);
 		}
 		return;
 	}
 	try {
-		chrome.storage.local.get("api_key", storage => {
+		chrome.storage.local.get('api_key', storage => {
 			const apiKey = storage.api_key;
 			if (!apiKey) {
-				alert("No API key is set.");
+				alert('No API key is set.');
 				return;
 			}
 			fetchComments(vid, apiKey).then(comments => {
@@ -123,15 +125,32 @@ function mouseEnterListener(event) {
 	}
 }
 
-function createPopup(anchor, comments) {
-	anchor.title = ""; // disable tooltips
-	anchor.querySelectorAll('*').forEach(child => {
-		child.title = ""; // even spans can have titles
-	});
+function cutTitle(elem) {
+	if (elem.title) {
+		const prefix = '<p>' + elem.title + '</p>';
+		elem.oldtitle = elem.title;
+		elem.title = '';
+		return prefix;
+	}
+	if (elem.oldtitle) {
+		return '<p>' + elem.oldtitle + '</p>';
+	}
+	return '';
+}
 
-	const popup = document.createElement("tooltip");
-	popup.className = "vid_" + getVideoId(anchor.href);
-	popup.innerHTML = comments;
+function cutTitles(anchor) {
+	let prefix = cutTitle(anchor); // disable anchor tooltips
+	anchor.querySelectorAll('*').forEach(child => {
+		prefix += cutTitle(child); // even spans can have titles
+	});
+	return prefix;
+}
+
+function createPopup(anchor, comments) {
+	const prefix = cutTitles(anchor);
+	const popup = document.createElement('tooltip');
+	popup.className = 'vid_' + getVideoId(anchor.href);
+	popup.innerHTML = prefix + comments;
 	Object.assign(popup.style, TIPSTYLE);
 	const fullW = document.documentElement.clientWidth;
 	const fullH = document.documentElement.clientHeight;
@@ -157,7 +176,7 @@ function showTip(popup) {
 		: (mouseX < 0 ? 0 : mouseX)) + 'px';
 	popup.style.top = ((mouseY + popH > fullH) ? fullH - popH
 		: (mouseY < 0 ? 0 : mouseY)) + 'px';
-	popup.style.visibility = "visible";
+	popup.style.visibility = 'visible';
 }
 
 function hideTips() {
@@ -165,11 +184,11 @@ function hideTips() {
 	timeout = undefined;
 	cause = undefined;
 	const classNames = {};
-	for (let tip of document.body.getElementsByTagName("tooltip")) {
+	for (let tip of document.body.getElementsByTagName('tooltip')) {
 		if (classNames[tip.className]) // duplicated
 			tip.remove();
 		else {
-			tip.style.visibility = "hidden";
+			tip.style.visibility = 'hidden';
 			classNames[tip.className] = true;
 		}
 	}
@@ -180,8 +199,8 @@ function hideTips() {
 function mouseMoveListener(event) {
 	const elem = document.elementFromPoint(event.clientX, event.clientY);
 	if (!elem || // mouse pointer is out of browser
-		(elem.tagName != "TOOLTIP" &&
-			(!elem.parentNode || elem.parentNode.tagName != "TOOLTIP")
+		(elem.tagName != 'TOOLTIP' &&
+			(!elem.parentNode || elem.parentNode.tagName != 'TOOLTIP')
 		) && cause && !cause.contains(elem)
 	)
 		hideTips();
@@ -202,27 +221,8 @@ function keyUpListener(event) {
 		pressed = false;
 }
 
-// wipe tooltips every time href changes
-window.addEventListener("load", () => {
-	const observer = new MutationObserver(mutations => {
-		if (prevHref != location.href) {
-			if (DEBUG == true)
-				console.log("href changed: ", prevHref, " -> ", location.href);
-			clearTimeout(timeout);
-			timeout = undefined;
-			cause = undefined;
-			for (let tip of document.body.getElementsByTagName("tooltip")) {
-				tip.remove();
-			}
-			Object.keys(cache).forEach(key => delete cache[key]);
-			prevHref = location.href;
-		}
-	});
-	observer.observe(document.body, {childList: true, subtree: true});
-});
-
 // set {useCapture: true} to detect all anchors with the single listener
-document.addEventListener("mouseenter", mouseEnterListener, true);
-document.addEventListener("mousemove", mouseMoveListener);
-document.addEventListener("keydown", keyDownListener);
-document.addEventListener("keyup", keyUpListener);
+document.addEventListener('mouseenter', mouseEnterListener, true);
+document.addEventListener('mousemove', mouseMoveListener);
+document.addEventListener('keydown', keyDownListener);
+document.addEventListener('keyup', keyUpListener);
