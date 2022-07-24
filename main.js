@@ -7,7 +7,7 @@ const MAXHEIGHTR = 0.7;
 const OFFSETX = 10; // position of tooltip
 const OFFSETY = 10; // relative to cursor
 const PARAMS = new URLSearchParams({
-	maxResults: 10, // default 20 is too many
+	maxResults: 10, // default is 20
 	order: "relevance", // or "time"
 	//moderationStatus: "published", // "heldForReview" or "likelySpam"
 	//searchTerms: "",
@@ -36,13 +36,14 @@ let mouseY = 0;
 
 // loggers
 let d, dE, dM;
-setLoggers(1); // default
-chrome.storage.local.get(["log_level"], (storage) => {
-	const logLevel = storage.log_level;
-	if (typeof logLevel === "number") {
-		setLoggers(logLevel);
+chrome.storage.local.get(
+	{
+		log_level: 1, // default
+	},
+	(storage) => {
+		setLoggers(storage.log_level);
 	}
-});
+);
 
 function setLoggers(logLevel) {
 	const devnull = {
@@ -57,11 +58,11 @@ function setLoggers(logLevel) {
 
 // returns a promise
 function fetchComments(videoId, apiKey) {
+	const apiParams = PARAMS;
+	apiParams.append("videoId", videoId);
+	apiParams.append("key", apiKey);
 	const url =
-		"https://www.googleapis.com/youtube/v3/commentThreads" +
-		"?" + PARAMS +
-		"&videoId=" + videoId +
-		"&key=" + apiKey;
+		"https://www.googleapis.com/youtube/v3/commentThreads?" + apiParams;
 	d.log("url fetched", url);
 	return fetch(url)
 		.then((response) => {
@@ -141,32 +142,35 @@ function mouseEnterListener(event) {
 		return;
 	}
 	try {
-		chrome.storage.local.get(["api_key", "log_level"], (storage) => {
-			const logLevel = storage.log_level;
-			if (typeof logLevel === "number") {
-				setLoggers(logLevel);
+		chrome.storage.local.get(
+			{
+				api_key: "",
+				log_level: 1,
+			},
+			(storage) => {
+				setLoggers(storage.log_level);
+				const apiKey = storage.api_key;
+				if (!apiKey) {
+					console.warn("api key is not found");
+					alert("No API key is set.");
+					return;
+				}
+				d.groupCollapsed("fetch_" + vid);
+				fetchComments(vid, apiKey)
+					.then((comments) => {
+						// do a fetch even when pressed
+						if (pressed) return;
+						createTooltip(anchor, comments);
+					})
+					.catch((error) => {
+						console.warn(error);
+						hideTips();
+					})
+					.finally(() => {
+						d.groupEnd();
+					});
 			}
-			const apiKey = storage.api_key;
-			if (!apiKey) {
-				console.warn("api key is not found");
-				alert("No API key is set.");
-				return;
-			}
-			d.groupCollapsed("fetch_" + vid);
-			fetchComments(vid, apiKey)
-				.then((comments) => {
-					// do a fetch even when pressed
-					if (pressed) return;
-					createTooltip(anchor, comments);
-				})
-				.catch((error) => {
-					console.warn(error);
-					hideTips();
-				})
-				.finally(() => {
-					d.groupEnd();
-				});
-		});
+		);
 	} catch (error) {
 		console.warn(error);
 		hideTips();
@@ -240,14 +244,14 @@ function hideTips() {
 	clearTimeout(timeout);
 	timeout = undefined;
 	cause = undefined;
-	const classNames = {};
+	const existing = {};
 	for (let tip of document.body.getElementsByTagName("tooltip")) {
-		if (!classNames[tip.className]) {
+		if (!existing[tip.className]) {
 			if (tip.style.visibility === "visible") {
 				d.log("tooltip hidden", tip.className);
 				tip.style.visibility = "hidden";
 			}
-			classNames[tip.className] = true;
+			existing[tip.className] = true;
 		} else {
 			d.log("duplicated tooltip removed", tip);
 			tip.remove();
@@ -274,8 +278,10 @@ function mouseMoveListener(event) {
 				const eventVid = getVideoId(ancestorAnchor.href);
 				const causeVid = getVideoId(cause.href);
 				if (eventVid !== causeVid) {
-					dM.log("mouse pointer is on an anchor " +
-						"whose href is different from tooltip");
+					dM.log(
+						"mouse pointer is on an anchor " +
+						"whose href is different from tooltip"
+					);
 					hideTips();
 				}
 			}
