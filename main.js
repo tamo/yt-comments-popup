@@ -12,7 +12,7 @@ const PARAMS = new URLSearchParams({
 	//moderationStatus: "published", // "heldForReview" or "likelySpam"
 	//searchTerms: "",
 	part: "snippet",
-	textFormat: "plaintext" // cannot trim "html" safely
+	textFormat: "plaintext", // cannot trim "html" safely
 });
 const TIPSTYLE = {
 	visibility: "hidden", // to be made visible later
@@ -23,7 +23,7 @@ const TIPSTYLE = {
 	zIndex: 9999999,
 	backgroundColor: "black",
 	color: "white",
-	boxShadow: "0 0 5px 2px rgba(255,255,255,0.5)"
+	boxShadow: "0 0 5px 2px rgba(255,255,255,0.5)",
 };
 
 // global variables
@@ -36,123 +36,138 @@ let mouseY = 0;
 
 // loggers
 let d, dE, dM;
-setLoggers(1);
-chrome.storage.local.get(['log_level'], storage => {
+setLoggers(1); // default
+chrome.storage.local.get(["log_level"], (storage) => {
 	const logLevel = storage.log_level;
-	if (logLevel || logLevel === 0)
+	if (typeof logLevel === "number") {
 		setLoggers(logLevel);
+	}
 });
 
 function setLoggers(logLevel) {
 	const devnull = {
-		log: ()=>{},
-		groupCollapsed: ()=>{},
-		groupEnd: ()=>{}
+		log: () => { },
+		groupCollapsed: () => { },
+		groupEnd: () => { },
 	};
-	d = (logLevel > 0) ? console : devnull;
-	dE = (logLevel > 1) ? console : devnull;
-	dM = (logLevel > 2) ? console : devnull;
+	d = logLevel > 0 ? console : devnull;
+	dE = logLevel > 1 ? console : devnull;
+	dM = logLevel > 2 ? console : devnull;
 }
 
 // returns a promise
 function fetchComments(videoId, apiKey) {
-	const url = 'https://www.googleapis.com/youtube/v3/commentThreads'
-			+ '?' + PARAMS + '&videoId=' + videoId + '&key=' + apiKey;
-	d.log('url fetched', url);
-	return fetch(url).then(response => {
-		if(!response.ok) {
-			d.log('response not ok', response)
-			if (response.status == 403)
-				return {items: []};
-			throw new Error('response status ' + response.status);
-		}
-		return response.json();
-	}).then(json => {
-		d.log('json fetched', json);
-		let comments = '';
-		for (let i = 0; i < json.items.length; i++) {
-			const item = json.items[i];
-			const comment = item.snippet.topLevelComment.snippet.textDisplay;
-			d.log('comment', i, comment);
-			comments += '<li>' + comment.substring(0, MAXCOMLEN) + '</li>';
-		}
-		if (comments === '')
-			comments = '<li>no comments</li>';
-		return cache[videoId] = comments;
-	});
+	const url =
+		"https://www.googleapis.com/youtube/v3/commentThreads" +
+		"?" + PARAMS +
+		"&videoId=" + videoId +
+		"&key=" + apiKey;
+	d.log("url fetched", url);
+	return fetch(url)
+		.then((response) => {
+			if (!response.ok) {
+				d.log("response not ok", response);
+				if (response.status == 403) {
+					// comments disabled for the video
+					return { items: [] };
+				}
+				// otherwise don't cache it
+				throw new Error("response status " + response.status);
+			}
+			return response.json();
+		})
+		.then((json) => {
+			d.log("json fetched", json);
+			let comments = "";
+			for (let i = 0; i < json.items.length; i++) {
+				const item = json.items[i];
+				const comment = item.snippet.topLevelComment.snippet.textDisplay;
+				d.log("comment", i, comment);
+				comments += "<li>" + comment.substring(0, MAXCOMLEN) + "</li>";
+			}
+			if (comments === "") {
+				comments = "<li>no comments</li>";
+			}
+			return (cache[videoId] = comments);
+		});
 	// don't catch errors here because the caller does
 }
 
 function getVideoId(url) {
-	if (!url.match(/^https:\/\/www\.youtube\.com\/watch\?v=[^&]/))
+	if (!url.match(/^https:\/\/www\.youtube\.com\/watch\?v=[^&]/)) {
 		return;
-	return url.replace(/^https:\/\/www\.youtube\.com\/watch\?v=([^&]+)(&.*)?$/, '$1');
+	}
+	return url.replace(
+		/^https:\/\/www\.youtube\.com\/watch\?v=([^&]+)(&.*)?$/,
+		"$1"
+	);
 }
 
 function mouseEnterListener(event) {
 	const anchor = event.target;
-	dE.log('mouseenter', event, 'target', anchor);
-	if (anchor.tagName !== 'A')
-		return;
-	if (anchor.role === 'button') // e.g. next button on player
-		return;
+	dE.log("mouseenter", event, "target", anchor);
+	if (anchor.tagName !== "A") return;
+	if (anchor.role === "button") return; // e.g. next button on player
 
 	const vid = getVideoId(anchor.href);
-	if (!vid)
-		return;
-	if (vid === getVideoId(location.href)) // current video
-		return;
+	if (!vid) return;
+	if (vid === getVideoId(location.href)) return; // current video
 
 	if (cache[vid]) {
-		if (pressed)
-			return;
-		d.groupCollapsed('cached_' + vid);
-		const tooltip = document.querySelector('tooltip.vid_' + vid);
+		if (pressed) return;
+		d.groupCollapsed("cached_" + vid);
+		const tooltip = document.querySelector("tooltip.vid_" + vid);
 		if (tooltip) {
-			d.log('already has a tooltip', tooltip);
+			d.log("already has a tooltip", tooltip);
 			// so reuse it by simulating createTooltip()
 			const prefix = cutTitles(anchor);
-			if (prefix && tooltip.children[0].tagName !== "P")
+			if (prefix && tooltip.children[0].tagName !== "P") {
 				tooltip.innerHTML = prefix + tooltip.innerHTML;
+			}
 			hideTips();
-			timeout = setTimeout(tooltip => {
-				showTip(tooltip);
-			}, DELAY, tooltip);
+			timeout = setTimeout(
+				(tooltip) => {
+					showTip(tooltip);
+				},
+				DELAY,
+				tooltip
+			);
 			cause = anchor;
 		} else {
-			console.warn('comments are cached but the tooltip is not found');
+			console.warn("comments are cached but the tooltip is not found");
 			createTooltip(anchor, cache[vid]);
 		}
 		d.groupEnd();
 		return;
 	}
 	try {
-		chrome.storage.local.get([
-			'api_key',
-			'log_level'
-		], storage => {
-			const apiKey = storage.api_key;
+		chrome.storage.local.get(["api_key", "log_level"], (storage) => {
 			const logLevel = storage.log_level;
-			if (typeof logLevel === "number")
+			if (typeof logLevel === "number") {
 				setLoggers(logLevel);
+			}
+			const apiKey = storage.api_key;
 			if (!apiKey) {
 				console.warn("api key is not found");
-				alert('No API key is set.');
+				alert("No API key is set.");
 				return;
 			}
-			d.groupCollapsed('fetch_' + vid);
-			fetchComments(vid, apiKey).then(comments => {
-				if (pressed)	// return after fetching 
-					return;	// even when pressed
-				createTooltip(anchor, comments);
-			}).catch(error => {
-				console.warn(error);
-				hideTips();
-			}).finally(() => {
-				d.groupEnd();
-			});
+			d.groupCollapsed("fetch_" + vid);
+			fetchComments(vid, apiKey)
+				.then((comments) => {
+					// do a fetch even when pressed
+					if (pressed) return;
+					createTooltip(anchor, comments);
+				})
+				.catch((error) => {
+					console.warn(error);
+					hideTips();
+				})
+				.finally(() => {
+					d.groupEnd();
+				});
 		});
-	} catch(error) {
+	} catch (error) {
 		console.warn(error);
 		hideTips();
 	}
@@ -160,21 +175,21 @@ function mouseEnterListener(event) {
 
 function cutTitle(elem) {
 	if (elem.title) {
-		d.log('title found and removed', elem);
-		const prefix = '<p>' + elem.title + '</p>';
+		d.log("title found and removed", elem);
+		const prefix = "<p>" + elem.title + "</p>";
 		elem.oldtitle = elem.title;
-		elem.title = '';
+		elem.title = "";
 		return prefix;
 	}
 	if (elem.oldtitle) {
-		return '<p>' + elem.oldtitle + '</p>';
+		return "<p>" + elem.oldtitle + "</p>";
 	}
-	return '';
+	return "";
 }
 
 function cutTitles(anchor) {
 	let prefix = cutTitle(anchor); // disable anchor tooltips
-	anchor.querySelectorAll('*').forEach(child => {
+	anchor.querySelectorAll("*").forEach((child) => {
 		prefix += cutTitle(child); // even spans can have titles
 	});
 	return prefix;
@@ -182,24 +197,30 @@ function cutTitles(anchor) {
 
 function createTooltip(anchor, comments) {
 	const prefix = cutTitles(anchor);
-	const tooltip = document.createElement('tooltip');
-	tooltip.className = 'vid_' + getVideoId(anchor.href);
+	const tooltip = document.createElement("tooltip");
+	tooltip.className = "vid_" + getVideoId(anchor.href);
 	tooltip.innerHTML = prefix + comments;
 	Object.assign(tooltip.style, TIPSTYLE);
 	const fullW = document.documentElement.clientWidth;
 	const fullH = document.documentElement.clientHeight;
-	tooltip.style.maxWidth = (fullW * MAXWIDTHR) + 'px';
-	tooltip.style.maxHeight = (fullH * MAXHEIGHTR) + 'px';
-	tooltip.onclick = () => {hideTips();};
-	d.log('tooltip created', tooltip);
+	tooltip.style.maxWidth = fullW * MAXWIDTHR + "px";
+	tooltip.style.maxHeight = fullH * MAXHEIGHTR + "px";
+	tooltip.onclick = () => {
+		hideTips();
+	};
+	d.log("tooltip created", tooltip);
 
 	hideTips();
 	document.body.appendChild(tooltip);
 	cause = anchor;
 
-	timeout = setTimeout(tooltip => {
-		showTip(tooltip);
-	}, DELAY, tooltip);
+	timeout = setTimeout(
+		(tooltip) => {
+			showTip(tooltip);
+		},
+		DELAY,
+		tooltip
+	);
 }
 
 function showTip(tooltip) {
@@ -207,12 +228,12 @@ function showTip(tooltip) {
 	const fullH = document.documentElement.clientHeight;
 	const tipW = tooltip.offsetWidth;
 	const tipH = tooltip.offsetHeight;
-	tooltip.style.left = ((mouseX + tipW > fullW) ? fullW - tipW
-		: (mouseX < 0 ? 0 : mouseX)) + 'px';
-	tooltip.style.top = ((mouseY + tipH > fullH) ? fullH - tipH
-		: (mouseY < 0 ? 0 : mouseY)) + 'px';
-	tooltip.style.visibility = 'visible';
-	d.log('tooltip shown', tooltip.className);
+	tooltip.style.left =
+		(mouseX + tipW > fullW ? fullW - tipW : mouseX < 0 ? 0 : mouseX) + "px";
+	tooltip.style.top =
+		(mouseY + tipH > fullH ? fullH - tipH : mouseY < 0 ? 0 : mouseY) + "px";
+	tooltip.style.visibility = "visible";
+	d.log("tooltip shown", tooltip.className);
 }
 
 function hideTips() {
@@ -220,15 +241,15 @@ function hideTips() {
 	timeout = undefined;
 	cause = undefined;
 	const classNames = {};
-	for (let tip of document.body.getElementsByTagName('tooltip')) {
+	for (let tip of document.body.getElementsByTagName("tooltip")) {
 		if (!classNames[tip.className]) {
-			if (tip.style.visibility === 'visible') {
-				d.log('tooltip hidden', tip.className);
-				tip.style.visibility = 'hidden';
+			if (tip.style.visibility === "visible") {
+				d.log("tooltip hidden", tip.className);
+				tip.style.visibility = "hidden";
 			}
 			classNames[tip.className] = true;
 		} else {
-			d.log('duplicated tooltip removed', tip);
+			d.log("duplicated tooltip removed", tip);
 			tip.remove();
 		}
 	}
@@ -238,22 +259,23 @@ function hideTips() {
 // others are not useful when mouse moves fast
 function mouseMoveListener(event) {
 	const elem = document.elementFromPoint(event.clientX, event.clientY);
-	dM.groupCollapsed('mousemove');
-	dM.log(event, 'element', elem);
+	dM.groupCollapsed("mousemove");
+	dM.log(event, "element", elem);
 	if (!elem) {
-		dM.log('mouse pointer is out of browser');
+		dM.log("mouse pointer is out of browser");
 		hideTips();
-	} else if (!findAncestor(elem, 'TOOLTIP')) {
+	} else if (!findAncestor(elem, "TOOLTIP")) {
 		if (cause && !cause.contains(elem)) {
-			const ancestorAnchor = findAncestor(elem, 'A');
+			const ancestorAnchor = findAncestor(elem, "A");
 			if (!ancestorAnchor) {
-				dM.log('mouse pointer is not on the tooltip or on an anchor');
+				dM.log("mouse pointer is not on the tooltip or on an anchor");
 				hideTips();
 			} else {
 				const eventVid = getVideoId(ancestorAnchor.href);
 				const causeVid = getVideoId(cause.href);
 				if (eventVid !== causeVid) {
-					dM.log('mouse pointer is on an anchor whose href is different from tooltip');
+					dM.log("mouse pointer is on an anchor " +
+						"whose href is different from tooltip");
 					hideTips();
 				}
 			}
@@ -266,10 +288,8 @@ function mouseMoveListener(event) {
 }
 
 function findAncestor(elem, type) {
-	if (elem.tagName === 'BODY')
-		return;
-	if (elem.tagName === type)
-		return elem;
+	if (elem.tagName === "BODY") return;
+	if (elem.tagName === type) return elem;
 	return findAncestor(elem.parentElement, type);
 }
 
@@ -281,12 +301,13 @@ function keyDownListener(event) {
 }
 
 function keyUpListener(event) {
-	if (event.keyCode == CTRL)
+	if (event.keyCode == CTRL) {
 		pressed = false;
+	}
 }
 
 // set {useCapture: true} to detect all anchors with the single listener
-document.addEventListener('mouseenter', mouseEnterListener, true);
-document.addEventListener('mousemove', mouseMoveListener);
-document.addEventListener('keydown', keyDownListener);
-document.addEventListener('keyup', keyUpListener);
+document.addEventListener("mouseenter", mouseEnterListener, true);
+document.addEventListener("mousemove", mouseMoveListener);
+document.addEventListener("keydown", keyDownListener);
+document.addEventListener("keyup", keyUpListener);
