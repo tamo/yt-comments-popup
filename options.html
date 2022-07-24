@@ -4,11 +4,24 @@
 		<meta http-equiv="content-type" content="text/html; charset=utf-8" />
 	</head>
 	<body>
-		<div>
-			You need an <a href="https://developers.google.com/youtube/v3/getting-started" target="_blank">API key</a>
-			<input type="textbox" id="api_key" />
-			<button id="save_api_key">Save</button>
-		</div>
+		<form id="option_form">
+			<p>
+				You need an <a href="https://developers.google.com/youtube/v3/getting-started" target="_blank">API key</a>
+				<input type="textbox" id="api_key" />
+			</p>
+			<p>
+				Log level
+				<input type="radio" name="log_level" id="log_0" value="0" />
+				<label for="log_0">Quiet</label>
+				<input type="radio" name="log_level" id="log_1" value="1" />
+				<label for="log_1">Normal</label>
+				<input type="radio" name="log_level" id="log_2" value="2" />
+				<label for="log_2">Element</label>
+				<input type="radio" name="log_level" id="log_3" value="3" />
+				<label for="log_3">Motion</label>
+			</p>
+			<button id="save_button">Save</button>
+		</form>
 		<script src="options.js"></script>
 	</body>
 </html>

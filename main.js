@@ -1,12 +1,10 @@
-const DEBUG = false;
-
 // constants, or settings
 const CTRL = 17; // keycode to stop
 const MAXCOMLEN = 150; // trim comments
-const POPUPDELAY = 800; // 1000 = 1 sec
+const DELAY = 800; // 1000 = 1 sec
 const MAXWIDTHR = 0.5; // ratio to screen
 const MAXHEIGHTR = 0.7;
-const OFFSETX = 10; // position of popup
+const OFFSETX = 10; // position of tooltip
 const OFFSETY = 10; // relative to cursor
 const PARAMS = new URLSearchParams({
 	maxResults: 10, // default 20 is too many
@@ -36,24 +34,49 @@ let pressed = false;
 let mouseX = 0;
 let mouseY = 0;
 
+// loggers
+let d, dE, dM;
+setLoggers(1);
+chrome.storage.local.get(['log_level'], storage => {
+	const logLevel = storage.log_level;
+	if (logLevel || logLevel === 0)
+		setLoggers(logLevel);
+});
+
+function setLoggers(logLevel) {
+	const devnull = {
+		log: ()=>{},
+		groupCollapsed: ()=>{},
+		groupEnd: ()=>{}
+	};
+	d = (logLevel > 0) ? console : devnull;
+	dE = (logLevel > 1) ? console : devnull;
+	dM = (logLevel > 2) ? console : devnull;
+}
+
 // returns a promise
 function fetchComments(videoId, apiKey) {
 	const url = 'https://www.googleapis.com/youtube/v3/commentThreads'
 			+ '?' + PARAMS + '&videoId=' + videoId + '&key=' + apiKey;
+	d.log('url fetched', url);
 	return fetch(url).then(response => {
-		if(!response.ok) // includes disabled cases
-			return {items: []};
+		if(!response.ok) {
+			d.log('response not ok', response)
+			if (response.status == 403)
+				return {items: []};
+			throw new Error('response status ' + response.status);
+		}
 		return response.json();
 	}).then(json => {
-		if (DEBUG == true)
-			console.log('json: ', json);
+		d.log('json fetched', json);
 		let comments = '';
 		for (let i = 0; i < json.items.length; i++) {
 			const item = json.items[i];
 			const comment = item.snippet.topLevelComment.snippet.textDisplay;
+			d.log('comment', i, comment);
 			comments += '<li>' + comment.substring(0, MAXCOMLEN) + '</li>';
 		}
-		if (comments == '')
+		if (comments === '')
 			comments = '<li>no comments</li>';
 		return cache[videoId] = comments;
 	});
@@ -68,65 +91,76 @@ function getVideoId(url) {
 
 function mouseEnterListener(event) {
 	const anchor = event.target;
-	if (anchor.tagName != 'A')
+	dE.log('mouseenter', event, 'target', anchor);
+	if (anchor.tagName !== 'A')
 		return;
-	if (anchor.role == 'button') // e.g. next button on player
+	if (anchor.role === 'button') // e.g. next button on player
 		return;
 
 	const vid = getVideoId(anchor.href);
 	if (!vid)
 		return;
-	if (vid == getVideoId(location.href)) // current video
+	if (vid === getVideoId(location.href)) // current video
 		return;
-	if (DEBUG == true)
-		console.log('mouseenter: ', vid);
 
 	if (cache[vid]) {
 		if (pressed)
 			return;
+		d.groupCollapsed('cached_' + vid);
 		const tooltip = document.querySelector('tooltip.vid_' + vid);
 		if (tooltip) {
-			// already has a tooltip
-			// so reuse it by simulating createPopup()
+			d.log('already has a tooltip', tooltip);
+			// so reuse it by simulating createTooltip()
 			const prefix = cutTitles(anchor);
-			if (prefix && tooltip.children[0].tagName != "P")
+			if (prefix && tooltip.children[0].tagName !== "P")
 				tooltip.innerHTML = prefix + tooltip.innerHTML;
 			hideTips();
 			timeout = setTimeout(tooltip => {
 				showTip(tooltip);
-			}, POPUPDELAY, tooltip);
+			}, DELAY, tooltip);
 			cause = anchor;
 		} else {
-			if (DEBUG == true)
-				console.log('inconsistency between cache and dom', cache, vid);
-			createPopup(anchor, cache[vid]);
+			console.warn('comments are cached but the tooltip is not found');
+			createTooltip(anchor, cache[vid]);
 		}
+		d.groupEnd();
 		return;
 	}
 	try {
-		chrome.storage.local.get('api_key', storage => {
+		chrome.storage.local.get([
+			'api_key',
+			'log_level'
+		], storage => {
 			const apiKey = storage.api_key;
+			const logLevel = storage.log_level;
+			if (typeof logLevel === "number")
+				setLoggers(logLevel);
 			if (!apiKey) {
+				console.warn("api key is not found");
 				alert('No API key is set.');
 				return;
 			}
+			d.groupCollapsed('fetch_' + vid);
 			fetchComments(vid, apiKey).then(comments => {
 				if (pressed)	// return after fetching 
 					return;	// even when pressed
-				createPopup(anchor, comments);
+				createTooltip(anchor, comments);
 			}).catch(error => {
+				console.warn(error);
 				hideTips();
-				console.log(error);
+			}).finally(() => {
+				d.groupEnd();
 			});
 		});
 	} catch(error) {
+		console.warn(error);
 		hideTips();
-		console.log(error);
 	}
 }
 
 function cutTitle(elem) {
 	if (elem.title) {
+		d.log('title found and removed', elem);
 		const prefix = '<p>' + elem.title + '</p>';
 		elem.oldtitle = elem.title;
 		elem.title = '';
@@ -146,37 +180,39 @@ function cutTitles(anchor) {
 	return prefix;
 }
 
-function createPopup(anchor, comments) {
+function createTooltip(anchor, comments) {
 	const prefix = cutTitles(anchor);
-	const popup = document.createElement('tooltip');
-	popup.className = 'vid_' + getVideoId(anchor.href);
-	popup.innerHTML = prefix + comments;
-	Object.assign(popup.style, TIPSTYLE);
+	const tooltip = document.createElement('tooltip');
+	tooltip.className = 'vid_' + getVideoId(anchor.href);
+	tooltip.innerHTML = prefix + comments;
+	Object.assign(tooltip.style, TIPSTYLE);
 	const fullW = document.documentElement.clientWidth;
 	const fullH = document.documentElement.clientHeight;
-	popup.style.maxWidth = (fullW * MAXWIDTHR) + 'px';
-	popup.style.maxHeight = (fullH * MAXHEIGHTR) + 'px';
+	tooltip.style.maxWidth = (fullW * MAXWIDTHR) + 'px';
+	tooltip.style.maxHeight = (fullH * MAXHEIGHTR) + 'px';
+	tooltip.onclick = () => {hideTips();};
+	d.log('tooltip created', tooltip);
 
-	popup.onclick = () => {hideTips();};
 	hideTips();
-	document.body.appendChild(popup);
+	document.body.appendChild(tooltip);
 	cause = anchor;
 
-	timeout = setTimeout(popup => {
-		showTip(popup);
-	}, POPUPDELAY, popup);
+	timeout = setTimeout(tooltip => {
+		showTip(tooltip);
+	}, DELAY, tooltip);
 }
 
-function showTip(popup) {
+function showTip(tooltip) {
 	const fullW = document.documentElement.clientWidth;
 	const fullH = document.documentElement.clientHeight;
-	const popW = popup.offsetWidth;
-	const popH = popup.offsetHeight;
-	popup.style.left = ((mouseX + popW > fullW) ? fullW - popW
+	const tipW = tooltip.offsetWidth;
+	const tipH = tooltip.offsetHeight;
+	tooltip.style.left = ((mouseX + tipW > fullW) ? fullW - tipW
 		: (mouseX < 0 ? 0 : mouseX)) + 'px';
-	popup.style.top = ((mouseY + popH > fullH) ? fullH - popH
+	tooltip.style.top = ((mouseY + tipH > fullH) ? fullH - tipH
 		: (mouseY < 0 ? 0 : mouseY)) + 'px';
-	popup.style.visibility = 'visible';
+	tooltip.style.visibility = 'visible';
+	d.log('tooltip shown', tooltip.className);
 }
 
 function hideTips() {
@@ -185,28 +221,56 @@ function hideTips() {
 	cause = undefined;
 	const classNames = {};
 	for (let tip of document.body.getElementsByTagName('tooltip')) {
-		if (classNames[tip.className]) // duplicated
-			tip.remove();
-		else {
-			tip.style.visibility = 'hidden';
+		if (!classNames[tip.className]) {
+			if (tip.style.visibility === 'visible') {
+				d.log('tooltip hidden', tip.className);
+				tip.style.visibility = 'hidden';
+			}
 			classNames[tip.className] = true;
+		} else {
+			d.log('duplicated tooltip removed', tip);
+			tip.remove();
 		}
 	}
 }
 
-// the only event reliable enough to hide popups
+// the only event reliable enough to hide tooltips
 // others are not useful when mouse moves fast
 function mouseMoveListener(event) {
 	const elem = document.elementFromPoint(event.clientX, event.clientY);
-	if (!elem || // mouse pointer is out of browser
-		(elem.tagName != 'TOOLTIP' &&
-			(!elem.parentNode || elem.parentNode.tagName != 'TOOLTIP')
-		) && cause && !cause.contains(elem)
-	)
+	dM.groupCollapsed('mousemove');
+	dM.log(event, 'element', elem);
+	if (!elem) {
+		dM.log('mouse pointer is out of browser');
 		hideTips();
+	} else if (!findAncestor(elem, 'TOOLTIP')) {
+		if (cause && !cause.contains(elem)) {
+			const ancestorAnchor = findAncestor(elem, 'A');
+			if (!ancestorAnchor) {
+				dM.log('mouse pointer is not on the tooltip or on an anchor');
+				hideTips();
+			} else {
+				const eventVid = getVideoId(ancestorAnchor.href);
+				const causeVid = getVideoId(cause.href);
+				if (eventVid !== causeVid) {
+					dM.log('mouse pointer is on an anchor whose href is different from tooltip');
+					hideTips();
+				}
+			}
+		}
+	}
+	dM.groupEnd();
 
 	mouseX = event.clientX + OFFSETX;
 	mouseY = event.clientY + OFFSETY;
+}
+
+function findAncestor(elem, type) {
+	if (elem.tagName === 'BODY')
+		return;
+	if (elem.tagName === type)
+		return elem;
+	return findAncestor(elem.parentElement, type);
 }
 
 function keyDownListener(event) {
