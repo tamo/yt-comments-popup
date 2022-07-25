@@ -317,3 +317,18 @@ document.addEventListener("mouseenter", mouseEnterListener, true);
 document.addEventListener("mousemove", mouseMoveListener);
 document.addEventListener("keydown", keyDownListener);
 document.addEventListener("keyup", keyUpListener);
+
+// wipe tooltips every time href changes
+/* // personally i don't need this feature
+let prevHref = location.href;
+window.addEventListener("load", () => {
+	const observer = new MutationObserver((mutations) => {
+		if (prevHref != location.href) {
+			d.log("href changed from", prevHref, "to", location.href);
+			hideTips();
+			prevHref = location.href;
+		}
+	});
+	observer.observe(document.body, { childList: true, subtree: true });
+});
+*/
