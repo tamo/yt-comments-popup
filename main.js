@@ -24,6 +24,7 @@ const TIPSTYLE = {
 	backgroundColor: "black",
 	color: "white",
 	boxShadow: "0 0 5px 2px rgba(255,255,255,0.5)",
+	padding: "3px",
 };
 
 // global variables
@@ -122,7 +123,7 @@ function mouseEnterListener(event) {
 			d.log("already has a tooltip", tooltip);
 			// so reuse it by simulating createTooltip()
 			const prefix = cutTitles(anchor);
-			if (prefix && tooltip.children[0].tagName !== "P") {
+			if (prefix && tooltip.children[0].tagName !== "H3") {
 				tooltip.innerHTML = prefix + tooltip.innerHTML;
 			}
 			hideTips();
@@ -181,13 +182,13 @@ function mouseEnterListener(event) {
 function cutTitle(elem) {
 	if (elem.title) {
 		d.log("title found and removed", elem);
-		const prefix = "<p>" + elem.title + "</p>";
+		const prefix = elem.title;
 		elem.oldtitle = elem.title;
 		elem.title = "";
-		return prefix;
+		return "<h3>" + prefix + "</h3>";
 	}
 	if (elem.oldtitle) {
-		return "<p>" + elem.oldtitle + "</p>";
+		return "<h3>" + elem.oldtitle + "</h3>";
 	}
 	return "";
 }
