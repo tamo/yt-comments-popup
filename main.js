@@ -6,14 +6,14 @@ const MAXWIDTHR = 0.5; // ratio to screen
 const MAXHEIGHTR = 0.7;
 const OFFSETX = 10; // position of tooltip
 const OFFSETY = 10; // relative to cursor
-const PARAMS = new URLSearchParams({
+const PARAMS = {
 	maxResults: 10, // default is 20
 	order: "relevance", // or "time"
 	//moderationStatus: "published", // "heldForReview" or "likelySpam"
 	//searchTerms: "",
 	part: "snippet",
 	textFormat: "plaintext", // cannot trim "html" safely
-});
+};
 const TIPSTYLE = {
 	visibility: "hidden", // to be made visible later
 	display: "block", // "none" prevents size calculation
@@ -59,9 +59,11 @@ function setLoggers(logLevel) {
 
 // returns a promise
 function fetchComments(videoId, apiKey) {
-	const apiParams = PARAMS;
-	apiParams.append("videoId", videoId);
-	apiParams.append("key", apiKey);
+	const apiParams = new URLSearchParams({
+		...PARAMS,
+		videoId: videoId,
+		key: apiKey,
+	});
 	const url =
 		"https://www.googleapis.com/youtube/v3/commentThreads?" + apiParams;
 	d.log("url fetched", url);
