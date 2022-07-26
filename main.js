@@ -64,8 +64,8 @@ function fetchComments(videoId, apiKey) {
 		videoId: videoId,
 		key: apiKey,
 	});
-	const url =
-		"https://www.googleapis.com/youtube/v3/commentThreads?" + apiParams;
+	const url = apiKey.match(/^https:\/\//) ? apiKey + videoId
+		: "https://www.googleapis.com/youtube/v3/commentThreads?" + apiParams;
 	d.log("url fetched", url);
 	return fetch(url)
 		.then((response) => {
