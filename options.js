@@ -1,6 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
 	const textbox = document.getElementById("api_key");
-	textbox.style.width = "25em";
 	chrome.storage.local.get(
 		{
 			api_key: "",
