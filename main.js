@@ -167,7 +167,7 @@ function mouseEnterListener(event) {
 						createTooltip(anchor, comments);
 					})
 					.catch((error) => {
-						console.warn(error);
+						console.warn(error.message);
 						hideTips();
 					})
 					.finally(() => {
