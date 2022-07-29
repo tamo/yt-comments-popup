@@ -64,7 +64,8 @@ function fetchComments(videoId, apiKey) {
 		videoId: videoId,
 		key: apiKey,
 	});
-	const url = apiKey.match(/^https:\/\//) ? apiKey + videoId
+	const url = apiKey.match(/^https:\/\//)
+		? apiKey + videoId
 		: "https://www.googleapis.com/youtube/v3/commentThreads?" + apiParams;
 	d.log("url fetched", url);
 	return fetch(url)
@@ -156,7 +157,7 @@ function mouseEnterListener(event) {
 				if (!apiKey) {
 					console.warn("api key is not found");
 					if (confirm("No API key is set.\nOpen options page?"))
-						chrome.runtime.sendMessage({"action": "options"});
+						chrome.runtime.sendMessage({ action: "options" });
 					return;
 				}
 				d.groupCollapsed("fetch_" + vid);
@@ -176,7 +177,16 @@ function mouseEnterListener(event) {
 			}
 		);
 	} catch (error) {
-		console.warn(error);
+		if (error.message === "Extension context invalidated.") {
+			if (pressed) return;
+			createTooltip(
+				anchor,
+				"<h1>Extension updated</h1>" +
+				"<p>Please reload the page</p>"
+			);
+			return;
+		}
+		console.warn(error.message);
 		hideTips();
 	}
 }
