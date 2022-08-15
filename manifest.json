@@ -1,6 +1,9 @@
 {
 	"name": "YT Comments Popup",
 	"version": "1.0",
+	"icons": {
+		"128": "ytcp.png"
+	},
 	"description": "Preview YT comments by hovering over links unless Ctrl is pressed",
 	"manifest_version": 3,
 	"permissions": [
