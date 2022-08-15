@@ -118,6 +118,8 @@ function mouseEnterListener(event) {
 	if (!vid) return;
 	if (vid === getVideoId(location.href)) return; // current video
 
+	cutTitles(anchor);
+
 	if (cache[vid]) {
 		if (pressed) return;
 		d.groupCollapsed("cached_" + vid);
