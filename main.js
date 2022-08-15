@@ -194,7 +194,7 @@ function mouseEnterListener(event) {
 }
 
 function cutTitle(elem) {
-	if (elem.title) {
+	if (elem.title && ![...elem.classList].some((c) => /^ytp-/.test(c))) {
 		d.log("title found and removed", elem);
 		const prefix = elem.title;
 		elem.oldtitle = elem.title;
