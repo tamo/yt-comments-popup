@@ -1,7 +1,7 @@
 // constants, or settings
 const CTRL = 17; // keycode to stop
 const MAXCOMLEN = 150; // trim comments
-const DELAY = 800; // 1000 = 1 sec
+const DELAY = 300; // 1000 = 1 sec
 const MAXWIDTHR = 0.5; // ratio to screen
 const MAXHEIGHTR = 0.7;
 const OFFSETX = 10; // position of tooltip
@@ -117,6 +117,8 @@ function mouseEnterListener(event) {
 	const vid = getVideoId(anchor.href);
 	if (!vid) return;
 	if (vid === getVideoId(location.href)) return; // current video
+
+	cutTitles(anchor);
 
 	if (cache[vid]) {
 		if (pressed) return;
