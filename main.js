@@ -118,6 +118,7 @@ function mouseEnterListener(event) {
 	const vid = getVideoId(anchor.href);
 	if (!vid) return;
 	if (vid === getVideoId(location.href)) return; // current video
+	if (cause?.href && vid === getVideoId(cause.href)) return;
 
 	hideTips();
 	cutTitles(anchor);
@@ -228,6 +229,7 @@ function createTooltip(anchor, comments = "", passed = 0, fill) {
 	tooltip.style.maxHeight = fullH * MAXHEIGHTR + "px";
 	tooltip.onclick = () => {
 		hideTips();
+		cause = anchor;
 	};
 	d.log("tooltip created", tooltip);
 
