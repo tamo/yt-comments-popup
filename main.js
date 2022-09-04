@@ -34,6 +34,7 @@ let cause = undefined;
 let pressed = false;
 let mouseX = 0;
 let mouseY = 0;
+let hiding = undefined;
 
 // loggers
 let d, dE, dM;
@@ -118,7 +119,9 @@ function mouseEnterListener(event) {
 	if (!vid) return;
 	if (vid === getVideoId(location.href)) return; // current video
 
+	hideTips();
 	cutTitles(anchor);
+	cause = anchor;
 
 	if (cache[vid]) {
 		if (pressed) return;
@@ -131,15 +134,7 @@ function mouseEnterListener(event) {
 			if (prefix && tooltip.children[0].tagName !== "H3") {
 				tooltip.innerHTML = prefix + tooltip.innerHTML;
 			}
-			hideTips();
-			timeout = setTimeout(
-				(tooltip) => {
-					showTip(tooltip);
-				},
-				DELAY,
-				tooltip
-			);
-			cause = anchor;
+			timeout = setTimeout(showTip.bind(null, tooltip, anchor), DELAY);
 		} else {
 			console.warn("comments are cached but the tooltip is not found");
 			createTooltip(anchor, cache[vid]);
@@ -163,11 +158,14 @@ function mouseEnterListener(event) {
 					return;
 				}
 				d.groupCollapsed("fetch_" + vid);
+				createTooltip(anchor, null, DELAY); // reserve
+				const startTime = Date.now();
 				fetchComments(vid, apiKey)
 					.then((comments) => {
 						// do a fetch even when pressed
 						if (pressed) return;
-						createTooltip(anchor, comments);
+						const deltaTime = Date.now() - startTime;
+						createTooltip(anchor, comments, deltaTime, true);
 					})
 					.catch((error) => {
 						console.warn(error.message);
@@ -215,10 +213,13 @@ function cutTitles(anchor) {
 	return prefix;
 }
 
-function createTooltip(anchor, comments) {
-	const prefix = cutTitles(anchor);
-	const tooltip = document.createElement("tooltip");
-	tooltip.className = "vid_" + getVideoId(anchor.href);
+function createTooltip(anchor, comments = "", passed = 0, fill) {
+	const prefix = comments ? cutTitles(anchor) : "";
+	const vid = "vid_" + getVideoId(anchor.href);
+	const tooltip = fill
+		? document.querySelector("tooltip." + vid)
+		: document.createElement("tooltip");
+	tooltip.className = vid;
 	tooltip.innerHTML = prefix + comments;
 	Object.assign(tooltip.style, TIPSTYLE);
 	const fullW = document.documentElement.clientWidth;
@@ -230,20 +231,20 @@ function createTooltip(anchor, comments) {
 	};
 	d.log("tooltip created", tooltip);
 
-	hideTips();
-	document.body.appendChild(tooltip);
-	cause = anchor;
+	if (!fill) {
+		document.body.appendChild(tooltip);
+	}
 
-	timeout = setTimeout(
-		(tooltip) => {
-			showTip(tooltip);
-		},
-		DELAY,
-		tooltip
-	);
+	if (comments) {
+		timeout = setTimeout(
+			showTip.bind(null, tooltip, anchor),
+			Math.max(0, DELAY - passed)
+		);
+	}
 }
 
-function showTip(tooltip) {
+function showTip(tooltip, anchor) {
+	if (anchor && anchor !== cause) return;
 	const fullW = document.documentElement.clientWidth;
 	const fullH = document.documentElement.clientHeight;
 	const tipW = tooltip.offsetWidth;
@@ -260,19 +261,23 @@ function hideTips() {
 	clearTimeout(timeout);
 	timeout = undefined;
 	cause = undefined;
-	const existing = {};
-	for (let tip of document.body.getElementsByTagName("tooltip")) {
-		if (!existing[tip.className]) {
-			if (tip.style.visibility === "visible") {
-				d.log("tooltip hidden", tip.className);
-				tip.style.visibility = "hidden";
+	if (hiding) return;
+	hiding = setTimeout(() => {
+		const existing = {};
+		for (let tip of document.body.getElementsByTagName("tooltip")) {
+			if (!existing[tip.className]) {
+				if (tip.style.visibility === "visible") {
+					d.log("tooltip hidden", tip.className);
+					tip.style.visibility = "hidden";
+				}
+				existing[tip.className] = true;
+			} else {
+				d.log("duplicated tooltip removed", tip);
+				tip.remove();
 			}
-			existing[tip.className] = true;
-		} else {
-			d.log("duplicated tooltip removed", tip);
-			tip.remove();
 		}
-	}
+		hiding = undefined;
+	}, 0);
 }
 
 // the only event reliable enough to hide tooltips
