@@ -18,6 +18,7 @@ const TIPSTYLE = {
 	visibility: "hidden", // to be made visible later
 	display: "block", // "none" prevents size calculation
 	position: "fixed",
+	overflow: "hidden",
 	left: 0, // will be placed near the cursor later
 	top: 0,
 	zIndex: 9999999,
@@ -223,10 +224,6 @@ function createTooltip(anchor, comments = "", passed = 0, fill) {
 	tooltip.className = vid;
 	tooltip.innerHTML = prefix + comments;
 	Object.assign(tooltip.style, TIPSTYLE);
-	const fullW = document.documentElement.clientWidth;
-	const fullH = document.documentElement.clientHeight;
-	tooltip.style.maxWidth = fullW * MAXWIDTHR + "px";
-	tooltip.style.maxHeight = fullH * MAXHEIGHTR + "px";
 	tooltip.onclick = () => {
 		hideTips();
 		cause = anchor;
@@ -249,12 +246,22 @@ function showTip(tooltip, anchor) {
 	if (anchor && anchor !== cause) return;
 	const fullW = document.documentElement.clientWidth;
 	const fullH = document.documentElement.clientHeight;
+
+	// first, calculate maximum
+	tooltip.style.left = 0;
+	tooltip.style.top = 0;
+	tooltip.style.maxWidth = fullW * MAXWIDTHR + "px";
+	tooltip.style.maxHeight = fullH * MAXHEIGHTR + "px";
+
+	// second, calculate x and y from real w and h
 	const tipW = tooltip.offsetWidth;
 	const tipH = tooltip.offsetHeight;
-	tooltip.style.left =
-		(mouseX + tipW > fullW ? fullW - tipW : mouseX < 0 ? 0 : mouseX) + "px";
-	tooltip.style.top =
-		(mouseY + tipH > fullH ? fullH - tipH : mouseY < 0 ? 0 : mouseY) + "px";
+	const overW = mouseX + tipW > fullW;
+	const overH = mouseY + tipH > fullH;
+	tooltip.style.left = (overW ? fullW - tipW : mouseX < 0 ? 0 : mouseX) + "px";
+	tooltip.style.top = (overH ? fullH - tipH : mouseY < 0 ? 0 : mouseY) + "px";
+
+	// last, make it visible
 	tooltip.style.visibility = "visible";
 	d.log("tooltip shown", tooltip.className);
 }
