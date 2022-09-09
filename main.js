@@ -183,8 +183,7 @@ function mouseEnterListener(event) {
 			if (pressed) return;
 			createTooltip(
 				anchor,
-				"<h1>Extension updated</h1>" +
-				"<p>Please reload the page</p>"
+				"<h1>Extension updated</h1><p>Please reload the page</p>"
 			);
 			return;
 		}
