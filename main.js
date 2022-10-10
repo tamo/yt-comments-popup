@@ -22,7 +22,7 @@ const TIPSTYLE = {
 	left: 0, // will be placed near the cursor later
 	top: 0,
 	zIndex: 9999999,
-	backgroundColor: "black",
+	backgroundColor: "rgba(0,0,0,0.8)",
 	color: "white",
 	boxShadow: "0 0 5px 2px rgba(255,255,255,0.5)",
 	padding: "3px",
