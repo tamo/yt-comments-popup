@@ -1,0 +1,30 @@
+name: build extension / addon
+
+on: workflow_dispatch
+
+jobs:
+  build:
+    name: chrome extension
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+      - name: build chrome extension
+        uses: cardinalby/webext-buildtools-pack-extension-dir-action@v1
+        with:
+          extensionDir: .
+          zipFilePath: built/ytcp-chrome.zip
+      - name: modify manifest for firefox
+        run: |
+          jq -s add manifest.json manifest_firefox.json > manifest_tmp.json
+          mv manifest_tmp.json manifest.json
+      - name: build firefox addon
+        uses: cardinalby/webext-buildtools-pack-extension-dir-action@v1
+        with:
+          extensionDir: .
+          zipFilePath: built/ytcp-firefox.xpi
+      - name: upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ytcp-built
+          path: built/
