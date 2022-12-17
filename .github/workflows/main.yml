@@ -14,7 +14,7 @@ jobs:
         with:
           extensionDir: .
           zipFilePath: built/ytcp-chrome.zip
-          zipIgnore: .git|built/*|manifest_firefox.json
+          zipIgnore: .git|built|built/*|manifest_firefox.json
       - name: modify manifest for firefox
         run: |
           jq -s add manifest.json manifest_firefox.json > manifest_tmp.json
@@ -24,7 +24,7 @@ jobs:
         with:
           extensionDir: .
           zipFilePath: built/ytcp-firefox.xpi
-          zipIgnore: .git|built/*|manifest_firefox.json
+          zipIgnore: .git|built|built/*|manifest_firefox.json
       - name: upload artifact
         uses: actions/upload-artifact@v3
         with:
