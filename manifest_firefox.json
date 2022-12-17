@@ -1,0 +1,14 @@
+{
+	"browser_specific_settings": {
+		"gecko": {
+			"id": "ytcp@tamo.ddns.org"
+		}
+	},
+	"developer": {
+		"name": "Tamotsu Takahashi",
+		"url": "https://github.com/tamo/yt-comments-popup/"
+	},
+	"background": {
+		"scripts": ["background.js"]
+	}
+}
