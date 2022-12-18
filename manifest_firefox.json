@@ -8,6 +8,9 @@
 		"name": "Tamotsu Takahashi",
 		"url": "https://github.com/tamo/yt-comments-popup/"
 	},
+	"host_permissions": [
+		"https://www.youtube.com/*"
+	],
 	"background": {
 		"scripts": ["background.js"]
 	}
