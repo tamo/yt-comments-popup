@@ -111,7 +111,7 @@ function fetchComments(videoId, apiKey) {
 				commentElement.textContent = comment.substring(0, MAXCOMLEN);
 				comments.appendChild(commentElement);
 			}
-			if (!comments.hasChildNodes) {
+			if (!comments.hasChildNodes()) {
 				const commentElement = document.createElement("li");
 				commentElement.textContent = "no comments";
 				comments.appendChild(commentElement);
