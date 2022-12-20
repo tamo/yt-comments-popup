@@ -102,15 +102,19 @@ function fetchComments(videoId, apiKey) {
 		})
 		.then((json) => {
 			d.log("json fetched", json);
-			let comments = "";
+			let comments = document.createElement("ul");
 			for (let i = 0; i < json.items.length; i++) {
 				const item = json.items[i];
 				const comment = item.snippet.topLevelComment.snippet.textDisplay;
 				d.log("comment", i, comment);
-				comments += "<li>" + comment.substring(0, MAXCOMLEN) + "</li>";
+				let commentElement = document.createElement("li");
+				commentElement.textContent = comment.substring(0, MAXCOMLEN);
+				comments.appendChild(commentElement);
 			}
-			if (comments === "") {
-				comments = "<li>no comments</li>";
+			if (!comments.hasChildNodes) {
+				const commentElement = document.createElement("li");
+				commentElement.textContent = "no comments";
+				comments.appendChild(commentElement);
 			}
 			return (cache[videoId] = comments);
 		});
@@ -149,9 +153,10 @@ function mouseEnterListener(event) {
 		if (tooltip) {
 			d.log("already has a tooltip", tooltip);
 			// so reuse it by simulating createTooltip()
-			const prefix = cutTitles(anchor);
-			if (prefix && tooltip.children[0].tagName !== "H3") {
-				tooltip.innerHTML = prefix + tooltip.innerHTML;
+			const prefix = cutTitles(anchor).textContent;
+			const h3 = tooltip.querySelector("h3");
+			if (!h3.textContent) {
+				h3.textContent = prefix;
 			}
 			timeout = setTimeout(showTip.bind(null, tooltip, anchor), DELAY);
 		} else {
@@ -213,35 +218,36 @@ function mouseEnterListener(event) {
 }
 
 function cutTitle(elem) {
-	if (elem.title && ![...elem.classList].some((c) => /^ytp-/.test(c))) {
+	let h3 = document.createElement("h3");
+	const title = elem.getAttribute("title");
+	if (title && ![...elem.classList].some((c) => /^ytp-/.test(c))) {
+		elem.setAttribute("oldtitle", title);
+		elem.removeAttribute("title");
 		d.log("title found and removed", elem);
-		const prefix = elem.title;
-		elem.oldtitle = elem.title;
-		elem.title = "";
-		return "<h3>" + prefix + "</h3>";
 	}
-	if (elem.oldtitle) {
-		return "<h3>" + elem.oldtitle + "</h3>";
-	}
-	return "";
+	h3.textContent = elem.getAttribute("oldtitle");
+	return h3;
 }
 
 function cutTitles(anchor) {
 	let prefix = cutTitle(anchor); // disable anchor tooltips
 	anchor.querySelectorAll("*").forEach((child) => {
-		prefix += cutTitle(child); // even spans can have titles
+		prefix.textContent += cutTitle(child).textContent; // even spans can have titles
 	});
 	return prefix;
 }
 
-function createTooltip(anchor, comments = "", passed = 0, fill) {
-	const prefix = comments ? cutTitles(anchor) : "";
+function createTooltip(anchor, comments, passed = 0, fill) {
 	const vid = "vid_" + getVideoId(anchor.href);
 	const tooltip = fill
 		? document.querySelector("tooltip." + vid)
 		: document.createElement("tooltip");
 	tooltip.className = vid;
-	tooltip.innerHTML = prefix + comments;
+	tooltip.innerHTML = "";
+	if (comments) {
+		tooltip.appendChild(cutTitles(anchor));
+		tooltip.appendChild(comments);
+	}
 	Object.assign(tooltip.style, TIPSTYLE);
 	tooltip.onclick = () => {
 		hideTips();
