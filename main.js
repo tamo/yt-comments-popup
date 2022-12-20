@@ -27,6 +27,7 @@ const TIPSTYLE = {
 	boxShadow: "0 0 5px 2px rgba(255,255,255,0.5)",
 	padding: "3px",
 };
+const FALLBACK_URL = undefined; // in a form of "https://example.com/?"
 
 // global variables
 const cache = {};
@@ -35,6 +36,7 @@ let cause = undefined;
 let pressed = false;
 let mouseX = 0;
 let mouseY = 0;
+let warned = false;
 let hiding = undefined;
 
 // loggers
@@ -76,12 +78,27 @@ function fetchComments(videoId, apiKey) {
 				d.log("response not ok", response);
 				if (response.status == 403) {
 					// comments disabled for the video
-					return { items: [] };
+					return "";
 				}
 				// otherwise don't cache it
 				throw new Error("response status " + response.status);
 			}
-			return response.json();
+			return response.text();
+		})
+		.then((text) => {
+			try {
+				switch (text[0]) {
+					case "<":
+						const json = text.replaceAll(/<[^>]*>/g, "");
+						return JSON.parse(json);
+					case "{":
+						return JSON.parse(text);
+					default:
+						return { items: [] };
+				}
+			} catch (e) {
+				return { items: [] };
+			}
 		})
 		.then((json) => {
 			d.log("json fetched", json);
@@ -152,8 +169,11 @@ function mouseEnterListener(event) {
 			},
 			(storage) => {
 				setLoggers(storage.log_level);
-				const apiKey = storage.api_key;
+				const apiKey =
+					storage.api_key ||
+					(warned ? FALLBACK_URL : "");
 				if (!apiKey) {
+					warned = true;
 					console.warn("api key is not found");
 					if (confirm("No API key is set.\nOpen options page?"))
 						chrome.runtime.sendMessage({ action: "options" });
