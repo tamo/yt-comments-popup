@@ -102,12 +102,12 @@ function fetchComments(videoId, apiKey) {
 		})
 		.then((json) => {
 			d.log("json fetched", json);
-			let comments = document.createElement("ul");
+			const comments = document.createElement("ul");
 			for (let i = 0; i < json.items.length; i++) {
 				const item = json.items[i];
 				const comment = item.snippet.topLevelComment.snippet.textDisplay;
 				d.log("comment", i, comment);
-				let commentElement = document.createElement("li");
+				const commentElement = document.createElement("li");
 				commentElement.textContent = comment.substring(0, MAXCOMLEN);
 				comments.appendChild(commentElement);
 			}
@@ -218,7 +218,7 @@ function mouseEnterListener(event) {
 }
 
 function cutTitle(elem) {
-	let h3 = document.createElement("h3");
+	const h3 = document.createElement("h3");
 	const title = elem.getAttribute("title");
 	if (title && ![...elem.classList].some((c) => /^ytp-/.test(c))) {
 		elem.setAttribute("oldtitle", title);
@@ -230,7 +230,7 @@ function cutTitle(elem) {
 }
 
 function cutTitles(anchor) {
-	let prefix = cutTitle(anchor); // disable anchor tooltips
+	const prefix = cutTitle(anchor); // disable anchor tooltips
 	anchor.querySelectorAll("*").forEach((child) => {
 		prefix.textContent += cutTitle(child).textContent; // even spans can have titles
 	});
