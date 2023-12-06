@@ -185,14 +185,14 @@ function mouseEnterListener(event) {
 					return;
 				}
 				d.groupCollapsed("fetch_" + vid);
-				createTooltip(anchor, null, DELAY); // reserve
+				createTooltip(anchor, pressed ? null : "⌛"); // reserve
 				const startTime = Date.now();
 				fetchComments(vid, apiKey)
 					.then((comments) => {
 						// do a fetch even when pressed
 						if (pressed) return;
 						const deltaTime = Date.now() - startTime;
-						createTooltip(anchor, comments, deltaTime, true);
+						createTooltip(anchor, comments, deltaTime);
 					})
 					.catch((error) => {
 						console.warn(error.message);
@@ -237,11 +237,10 @@ function cutTitles(anchor) {
 	return prefix;
 }
 
-function createTooltip(anchor, comments, passed = 0, fill) {
+function createTooltip(anchor, comments, passed = 0) {
 	const vid = "vid_" + getVideoId(anchor.href);
-	const tooltip = fill
-		? document.querySelector("tooltip." + vid)
-		: document.createElement("tooltip");
+	const usedtip = document.querySelector("tooltip." + vid);
+	const tooltip = usedtip ? usedtip : document.createElement("tooltip");
 	tooltip.className = vid;
 	tooltip.innerHTML = "";
 	if (comments) {
@@ -255,7 +254,7 @@ function createTooltip(anchor, comments, passed = 0, fill) {
 	};
 	d.log("tooltip created", tooltip);
 
-	if (!fill) {
+	if (!usedtip) {
 		document.body.appendChild(tooltip);
 	}
 
