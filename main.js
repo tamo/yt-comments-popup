@@ -185,7 +185,10 @@ function mouseEnterListener(event) {
 					return;
 				}
 				d.groupCollapsed("fetch_" + vid);
-				createTooltip(anchor, pressed ? null : "⌛"); // reserve
+				createTooltip(anchor, pressed
+					? null
+					: new Text("⌛ waiting for comments... ⌛")
+				);
 				const startTime = Date.now();
 				fetchComments(vid, apiKey)
 					.then((comments) => {
@@ -206,10 +209,9 @@ function mouseEnterListener(event) {
 	} catch (error) {
 		if (error.message === "Extension context invalidated.") {
 			if (pressed) return;
-			createTooltip(
-				anchor,
-				"<h1>Extension updated</h1><p>Please reload the page</p>"
-			);
+			const h1p = document.createElement("div");
+			h1p.innerHTML = "<h1>Extension updated</h1><p>Please reload the page</p>";
+			createTooltip(anchor, h1p);
 			return;
 		}
 		console.warn(error.message);
