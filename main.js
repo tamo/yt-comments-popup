@@ -322,14 +322,15 @@ function hideTips() {
 // others are not useful when mouse moves fast
 function mouseMoveListener(event) {
 	const elem = document.elementFromPoint(event.clientX, event.clientY);
-	tipUnderMouse = findAncestor(elem, "TOOLTIP");
 	dM.groupCollapsed("mousemove");
 	dM.log(event, "element", elem);
 	if (!elem) {
 		dM.log("mouse pointer is out of browser");
+		tipUnderMouse = undefined;
 		hideTips();
-	} else if (!tipUnderMouse) {
-		if (cause && !cause.contains(elem)) {
+	} else {
+		tipUnderMouse = findAncestor(elem, "TOOLTIP");
+		if (!tipUnderMouse && cause && !cause.contains(elem)) {
 			const ancestorAnchor = findAncestor(elem, "A");
 			if (!ancestorAnchor) {
 				dM.log("mouse pointer is not on the tooltip or on an anchor");
