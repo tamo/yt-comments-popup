@@ -38,6 +38,7 @@ let mouseX = 0;
 let mouseY = 0;
 let warned = false;
 let hiding = undefined;
+let tipUnderMouse = undefined;
 
 // loggers
 let d, dE, dM;
@@ -282,10 +283,12 @@ function showTip(tooltip, anchor) {
 	// second, calculate x and y from real w and h
 	const tipW = tooltip.offsetWidth;
 	const tipH = tooltip.offsetHeight;
-	const overW = mouseX + tipW > fullW;
-	const overH = mouseY + tipH > fullH;
-	tooltip.style.left = (overW ? fullW - tipW : mouseX < 0 ? 0 : mouseX) + "px";
-	tooltip.style.top = (overH ? fullH - tipH : mouseY < 0 ? 0 : mouseY) + "px";
+	const mouseX2 = mouseX + (tipUnderMouse ? 0 : OFFSETX);
+	const mouseY2 = mouseY + (tipUnderMouse ? 0 : OFFSETY);
+	const overW = mouseX2 + tipW > fullW;
+	const overH = mouseY2 + tipH > fullH;
+	tooltip.style.left = (overW ? fullW - tipW : mouseX2 < 0 ? 0 : mouseX2) + "px";
+	tooltip.style.top = (overH ? fullH - tipH : mouseY2 < 0 ? 0 : mouseY2) + "px";
 
 	// last, make it visible
 	tooltip.style.visibility = "visible";
@@ -319,12 +322,13 @@ function hideTips() {
 // others are not useful when mouse moves fast
 function mouseMoveListener(event) {
 	const elem = document.elementFromPoint(event.clientX, event.clientY);
+	tipUnderMouse = findAncestor(elem, "TOOLTIP");
 	dM.groupCollapsed("mousemove");
 	dM.log(event, "element", elem);
 	if (!elem) {
 		dM.log("mouse pointer is out of browser");
 		hideTips();
-	} else if (!findAncestor(elem, "TOOLTIP")) {
+	} else if (!tipUnderMouse) {
 		if (cause && !cause.contains(elem)) {
 			const ancestorAnchor = findAncestor(elem, "A");
 			if (!ancestorAnchor) {
@@ -345,8 +349,8 @@ function mouseMoveListener(event) {
 	}
 	dM.groupEnd();
 
-	mouseX = event.clientX + OFFSETX;
-	mouseY = event.clientY + OFFSETY;
+	mouseX = tipUnderMouse ? tipUnderMouse.style.left : event.clientX;
+	mouseY = tipUnderMouse ? tipUnderMouse.style.top : event.clientY;
 }
 
 function findAncestor(elem, type) {
