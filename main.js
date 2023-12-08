@@ -273,22 +273,25 @@ function showTip(tooltip, anchor) {
 	if (anchor && anchor !== cause) return;
 	const fullW = document.documentElement.clientWidth;
 	const fullH = document.documentElement.clientHeight;
+	const maxW = fullW * MAXWIDTHR;
+	const maxH = fullH * MAXHEIGHTR;
+	const mouseX2 = mouseX + (tipUnderMouse ? -1 : 1) * OFFSETX;
+	const mouseY2 = mouseY + (tipUnderMouse ? -1 : 1) * OFFSETY;
+
+	// in case it is visible
+	tooltip.style.visibility = "hidden";
 
 	// first, calculate maximum
-	tooltip.style.left = 0;
-	tooltip.style.top = 0;
-	tooltip.style.maxWidth = fullW * MAXWIDTHR + "px";
-	tooltip.style.maxHeight = fullH * MAXHEIGHTR + "px";
+	tooltip.style.left = Math.min(fullW - maxW, Math.max(mouseX2, 0)) + "px";
+	tooltip.style.top = Math.min(fullH - maxH, Math.max(mouseY2, 0)) + "px";
+	tooltip.style.maxWidth = maxW + "px";
+	tooltip.style.maxHeight = maxH + "px";
 
 	// second, calculate x and y from real w and h
 	const tipW = tooltip.offsetWidth;
 	const tipH = tooltip.offsetHeight;
-	const mouseX2 = mouseX + (tipUnderMouse ? 0 : OFFSETX);
-	const mouseY2 = mouseY + (tipUnderMouse ? 0 : OFFSETY);
-	const overW = mouseX2 + tipW > fullW;
-	const overH = mouseY2 + tipH > fullH;
-	tooltip.style.left = (overW ? fullW - tipW : mouseX2 < 0 ? 0 : mouseX2) + "px";
-	tooltip.style.top = (overH ? fullH - tipH : mouseY2 < 0 ? 0 : mouseY2) + "px";
+	tooltip.style.left = Math.min(fullW - tipW, Math.max(mouseX2, 0)) + "px";
+	tooltip.style.top = Math.min(fullH - tipH, Math.max(mouseY2, 0)) + "px";
 
 	// last, make it visible
 	tooltip.style.visibility = "visible";
