@@ -278,9 +278,6 @@ function showTip(tooltip, anchor) {
 	const mouseX2 = mouseX + (tipUnderMouse ? -1 : 1) * OFFSETX;
 	const mouseY2 = mouseY + (tipUnderMouse ? -1 : 1) * OFFSETY;
 
-	// in case it is visible
-	tooltip.style.visibility = "hidden";
-
 	// first, calculate maximum
 	tooltip.style.left = Math.min(fullW - maxW, Math.max(mouseX2, 0)) + "px";
 	tooltip.style.top = Math.min(fullH - maxH, Math.max(mouseY2, 0)) + "px";
@@ -352,8 +349,8 @@ function mouseMoveListener(event) {
 	}
 	dM.groupEnd();
 
-	mouseX = tipUnderMouse ? tipUnderMouse.style.left : event.clientX;
-	mouseY = tipUnderMouse ? tipUnderMouse.style.top : event.clientY;
+	mouseX = tipUnderMouse ? tipUnderMouse.offsetLeft : event.clientX;
+	mouseY = tipUnderMouse ? tipUnderMouse.offsetTop : event.clientY;
 }
 
 function findAncestor(elem, type) {
