@@ -355,6 +355,7 @@ function mouseMoveListener(event) {
 }
 
 function findAncestor(elem, type) {
+	if (!elem) return;
 	if (elem.tagName === "BODY") return;
 	if (elem.tagName === type) return elem;
 	return findAncestor(elem.parentElement, type);
