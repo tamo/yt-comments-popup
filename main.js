@@ -252,7 +252,7 @@ function createTooltip(anchor, comments, passed = 0) {
 	Object.assign(tooltip.style, TIPSTYLE);
 	tooltip.onclick = () => {
 		hideTips();
-		cause = anchor;
+		cause = anchor; // avoid showing the tip again
 	};
 	d.log("tooltip created", tooltip);
 
