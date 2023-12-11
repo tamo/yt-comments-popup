@@ -104,10 +104,9 @@ function fetchComments(videoId, apiKey) {
 		.then((json) => {
 			d.log("json fetched", json);
 			const comments = document.createElement("ul");
-			for (let i = 0; i < json.items.length; i++) {
-				const item = json.items[i];
+			for (const item of json.items) {
 				const comment = item.snippet.topLevelComment.snippet.textDisplay;
-				d.log("comment", i, comment);
+				d.log("comment", comment);
 				const commentElement = document.createElement("li");
 				commentElement.textContent = comment.substring(0, MAXCOMLEN);
 				comments.appendChild(commentElement);
