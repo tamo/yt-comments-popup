@@ -122,7 +122,7 @@ function fetchComments(videoId, apiKey) {
 }
 
 function getVideoId(url) {
-	if (!url.match(/^https:\/\/www\.youtube\.com\/watch\?v=[^&]/)) {
+	if (!url || !url.match(/^https:\/\/www\.youtube\.com\/watch\?v=[^&]/)) {
 		return;
 	}
 	return url.replace(
@@ -140,7 +140,7 @@ function mouseEnterListener(event) {
 	const vid = getVideoId(anchor.href);
 	if (!vid) return;
 	if (vid === getVideoId(location.href)) return; // current video
-	if (cause?.href && vid === getVideoId(cause.href)) return;
+	if (vid === getVideoId(cause?.href)) return;
 
 	hideTips();
 	cutTitles(anchor);
