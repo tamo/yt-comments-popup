@@ -116,7 +116,7 @@ function fetchComments(videoId, apiKey) {
 				commentElement.textContent = "no comments";
 				comments.appendChild(commentElement);
 			}
-			return (cache[videoId] = comments);
+			return (comments);
 		});
 	// don't catch errors here because the caller does
 }
@@ -141,6 +141,7 @@ function mouseEnterListener(event) {
 	if (!vid) return;
 	if (vid === getVideoId(location.href)) return; // current video
 	if (vid === getVideoId(cause?.href)) return;
+	if (cache[vid] == "fetching") return;
 
 	hideTips();
 	cutTitles(anchor);
@@ -185,6 +186,7 @@ function mouseEnterListener(event) {
 					return;
 				}
 				d.groupCollapsed("fetch_" + vid);
+				cache[vid] = "fetching";
 				createTooltip(anchor, pressed
 					? null
 					: new Text("⌛ waiting for comments... ⌛")
@@ -193,12 +195,14 @@ function mouseEnterListener(event) {
 				fetchComments(vid, apiKey)
 					.then((comments) => {
 						// do a fetch even when pressed
+						cache[vid] = comments;
 						if (pressed) return;
 						const deltaTime = Date.now() - startTime;
 						createTooltip(anchor, comments, deltaTime);
 					})
 					.catch((error) => {
 						console.warn(error.message);
+						cache[vid] = false;
 						hideTips();
 					})
 					.finally(() => {
@@ -215,6 +219,7 @@ function mouseEnterListener(event) {
 			return;
 		}
 		console.warn(error.message);
+		cache[vid] = false;
 		hideTips();
 	}
 }
