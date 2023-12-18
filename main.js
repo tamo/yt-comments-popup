@@ -247,7 +247,7 @@ function cutTitles(anchor) {
 function createTooltip(anchor, comments, passed = 0) {
 	const vid = "vid_" + getVideoId(anchor.href);
 	const usedtip = document.querySelector("tooltip." + vid);
-	const tooltip = usedtip ? usedtip : document.createElement("tooltip");
+	const tooltip = usedtip || document.createElement("tooltip");
 	tooltip.className = vid;
 	tooltip.innerHTML = "";
 	if (comments) {
@@ -279,8 +279,8 @@ function showTip(tooltip, anchor) {
 	const fullH = document.documentElement.clientHeight;
 	const maxW = fullW * MAXWIDTHR;
 	const maxH = fullH * MAXHEIGHTR;
-	const mouseX2 = mouseX + (tipUnderMouse ? -1 : 1) * OFFSETX;
-	const mouseY2 = mouseY + (tipUnderMouse ? -1 : 1) * OFFSETY;
+	const mouseX2 = tipUnderMouse ? tipUnderMouse.offsetLeft : mouseX + OFFSETX;
+	const mouseY2 = tipUnderMouse ? tipUnderMouse.offsetTop : mouseY + OFFSETY;
 
 	// first, calculate maximum
 	tooltip.style.left = Math.min(fullW - maxW, Math.max(mouseX2, 0)) + "px";
@@ -354,8 +354,8 @@ function mouseMoveListener(event) {
 	}
 	dM.groupEnd();
 
-	mouseX = tipUnderMouse ? tipUnderMouse.offsetLeft : event.clientX;
-	mouseY = tipUnderMouse ? tipUnderMouse.offsetTop : event.clientY;
+	mouseX = event.clientX;
+	mouseY = event.clientY;
 }
 
 function findAncestor(elem, type) {
