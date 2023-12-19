@@ -38,7 +38,6 @@ let mouseX = 0;
 let mouseY = 0;
 let warned = false;
 let hiding = undefined;
-let tipUnderMouse = undefined;
 
 // loggers
 let d, dE, dM;
@@ -152,7 +151,7 @@ function mouseEnterListener(event) {
 	if (cache[vid]) {
 		if (pressed) return;
 		d.groupCollapsed("cached_" + vid, cache[vid]);
-		createTooltip(anchor, cache[vid]);
+		setTooltip(anchor, cache[vid]);
 		d.groupEnd();
 		return;
 	}
@@ -176,18 +175,21 @@ function mouseEnterListener(event) {
 				}
 				d.groupCollapsed("fetch_" + vid);
 				cache[vid] = "fetching";
-				createTooltip(anchor, pressed
-					? null
-					: new Text("⌛ waiting for comments... ⌛")
-				);
+				// do a fetch even when pressed
+				if (!pressed) {
+					const ul = document.createElement("ul");
+					const li = document.createElement("li");
+					li.textContent = "⌛ waiting for comments... ⌛";
+					ul.appendChild(li);
+					setTooltip(anchor, ul);
+				}
 				const startTime = Date.now();
 				fetchComments(vid, apiKey)
 					.then((comments) => {
-						// do a fetch even when pressed
 						cache[vid] = comments;
 						if (pressed) return;
 						const deltaTime = Date.now() - startTime;
-						createTooltip(anchor, comments, deltaTime);
+						setTooltip(anchor, comments, deltaTime);
 					})
 					.catch((error) => {
 						console.warn(error.message);
@@ -204,7 +206,7 @@ function mouseEnterListener(event) {
 			if (pressed) return;
 			const h1p = document.createElement("div");
 			h1p.innerHTML = "<h1>Extension updated</h1><p>Please reload the page</p>";
-			createTooltip(anchor, h1p);
+			setTooltip(anchor, h1p);
 			return;
 		}
 		console.warn(error.message);
@@ -233,59 +235,64 @@ function cutTitles(anchor) {
 	return prefix;
 }
 
-function createTooltip(anchor, comments, passed = 0) {
+function setTooltip(anchor, comments, passed = 0) {
+	clearTimeout(timeout);
+	timeout = setTimeout(
+		showTip.bind(null, anchor, comments),
+		Math.max(0, DELAY - passed)
+	);
+}
+
+function showTip(anchor, comments) {
+	if (anchor && anchor !== cause) return;
+
+	const fullW = document.documentElement.clientWidth;
+	const fullH = document.documentElement.clientHeight;
+	const maxW = fullW * MAXWIDTHR;
+	const maxH = fullH * MAXHEIGHTR;
+
 	const vid = "vid_" + getVideoId(anchor.href);
 	const usedtip = document.querySelector("tooltip." + vid);
+	// get values while it's visible
+	const tipX = usedtip ? usedtip.offsetLeft : mouseX + OFFSETX;
+	const tipY = usedtip ? usedtip.offsetTop : mouseY + OFFSETY;
+
 	const tooltip = usedtip || document.createElement("tooltip");
-	tooltip.className = vid;
-	tooltip.innerHTML = "";
-	if (comments) {
+	if (!usedtip) {
+		tooltip.className = vid;
+		tooltip.innerHTML = "";
 		tooltip.appendChild(cutTitles(anchor));
-		tooltip.appendChild(comments);
+	} else {
+		for (let ul of tooltip.getElementsByTagName("ul")) {
+			ul.remove();
+		}
 	}
+	tooltip.appendChild(comments);
 	Object.assign(tooltip.style, TIPSTYLE);
 	tooltip.onclick = () => {
 		hideTips();
 		cause = anchor; // avoid showing the tip again
 	};
-	d.log("tooltip created", tooltip);
-
 	if (!usedtip) {
+		d.log("tooltip created", tooltip);
 		document.body.appendChild(tooltip);
 	}
 
-	if (comments) {
-		timeout = setTimeout(
-			showTip.bind(null, tooltip, anchor),
-			Math.max(0, DELAY - passed)
-		);
-	}
-}
-
-function showTip(tooltip, anchor) {
-	if (anchor && anchor !== cause) return;
-	const fullW = document.documentElement.clientWidth;
-	const fullH = document.documentElement.clientHeight;
-	const maxW = fullW * MAXWIDTHR;
-	const maxH = fullH * MAXHEIGHTR;
-	const mouseX2 = tipUnderMouse ? tipUnderMouse.offsetLeft : mouseX + OFFSETX;
-	const mouseY2 = tipUnderMouse ? tipUnderMouse.offsetTop : mouseY + OFFSETY;
-
 	// first, calculate maximum
-	tooltip.style.left = Math.min(fullW - maxW, Math.max(mouseX2, 0)) + "px";
-	tooltip.style.top = Math.min(fullH - maxH, Math.max(mouseY2, 0)) + "px";
+	tooltip.style.left = Math.min(fullW - maxW, Math.max(tipX, 0)) + "px";
+	tooltip.style.top = Math.min(fullH - maxH, Math.max(tipY, 0)) + "px";
 	tooltip.style.maxWidth = maxW + "px";
 	tooltip.style.maxHeight = maxH + "px";
 
 	// second, calculate x and y from real w and h
 	const tipW = tooltip.offsetWidth;
 	const tipH = tooltip.offsetHeight;
-	tooltip.style.left = Math.min(fullW - tipW, Math.max(mouseX2, 0)) + "px";
-	tooltip.style.top = Math.min(fullH - tipH, Math.max(mouseY2, 0)) + "px";
+	tooltip.style.left = Math.min(fullW - tipW, Math.max(tipX, 0)) + "px";
+	tooltip.style.top = Math.min(fullH - tipH, Math.max(tipY, 0)) + "px";
 
 	// last, make it visible
 	tooltip.style.visibility = "visible";
-	d.log("tooltip shown", tooltip.className);
+	d.log("tooltip shown", tooltip.className, tooltip);
 }
 
 function hideTips() {
@@ -294,18 +301,8 @@ function hideTips() {
 	cause = undefined;
 	if (hiding) return;
 	hiding = setTimeout(() => {
-		const existing = {};
 		for (let tip of document.body.getElementsByTagName("tooltip")) {
-			if (!existing[tip.className]) {
-				if (tip.style.visibility === "visible") {
-					d.log("tooltip hidden", tip.className);
-					tip.style.visibility = "hidden";
-				}
-				existing[tip.className] = true;
-			} else {
-				d.log("duplicated tooltip removed", tip);
-				tip.remove();
-			}
+			tip.remove();
 		}
 		hiding = undefined;
 	}, 0);
@@ -319,11 +316,9 @@ function mouseMoveListener(event) {
 	dM.log(event, "element", elem);
 	if (!elem) {
 		dM.log("mouse pointer is out of browser");
-		tipUnderMouse = undefined;
 		hideTips();
 	} else {
-		tipUnderMouse = findAncestor(elem, "TOOLTIP");
-		if (!tipUnderMouse && cause && !cause.contains(elem)) {
+		if (!findAncestor(elem, "TOOLTIP") && cause && !cause.contains(elem)) {
 			const ancestorAnchor = findAncestor(elem, "A");
 			if (!ancestorAnchor) {
 				dM.log("mouse pointer is not on the tooltip or on an anchor");
