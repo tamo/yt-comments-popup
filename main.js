@@ -151,21 +151,8 @@ function mouseEnterListener(event) {
 
 	if (cache[vid]) {
 		if (pressed) return;
-		d.groupCollapsed("cached_" + vid);
-		const tooltip = document.querySelector("tooltip.vid_" + vid);
-		if (tooltip) {
-			d.log("already has a tooltip", tooltip);
-			// so reuse it by simulating createTooltip()
-			const prefix = cutTitles(anchor).textContent;
-			const h3 = tooltip.querySelector("h3");
-			if (!h3.textContent) {
-				h3.textContent = prefix;
-			}
-			timeout = setTimeout(showTip.bind(null, tooltip, anchor), DELAY);
-		} else {
-			console.warn("comments are cached but the tooltip is not found");
-			createTooltip(anchor, cache[vid]);
-		}
+		d.groupCollapsed("cached_" + vid, cache[vid]);
+		createTooltip(anchor, cache[vid]);
 		d.groupEnd();
 		return;
 	}
