@@ -102,7 +102,7 @@ function fetchComments(videoId, apiKey) {
 			}
 		})
 		.then((json) => {
-			d.log("json fetched", json);
+			d.groupCollapsed("json fetched", json);
 			const comments = document.createElement("ul");
 			for (const item of json.items) {
 				const comment = item.snippet.topLevelComment.snippet.textDisplay;
@@ -112,10 +112,12 @@ function fetchComments(videoId, apiKey) {
 				comments.appendChild(commentElement);
 			}
 			if (!comments.hasChildNodes()) {
+				d.log("no comments");
 				const commentElement = document.createElement("li");
 				commentElement.textContent = "no comments";
 				comments.appendChild(commentElement);
 			}
+			d.groupEnd();
 			return (comments);
 		});
 	// don't catch errors here because the caller does
