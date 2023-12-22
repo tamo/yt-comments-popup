@@ -61,7 +61,7 @@ function setLoggers(logLevel) {
 	dM = logLevel > 2 ? console : devnull;
 }
 
-function fetchComments(videoId, apiKey, anchor) {
+async function fetchComments(videoId, apiKey, anchor) {
 	const apiParams = new URLSearchParams({
 		...PARAMS,
 		videoId: videoId,
@@ -70,74 +70,66 @@ function fetchComments(videoId, apiKey, anchor) {
 	const url = apiKey.match(/^https:\/\//)
 		? apiKey + videoId
 		: "https://www.googleapis.com/youtube/v3/commentThreads?" + apiParams;
+	d.groupCollapsed("fetch_" + videoId);
 	d.log("url to fetch", url);
 	const startTime = Date.now();
-	fetch(url)
-		.then((response) => {
-			if (!response.ok) {
-				d.log("response not ok", response);
-				return ["response status " + response.status];
-			}
-			return response.text();
-		})
-		.then((text) => {
-			if (text.isArray) return text[0];
-			d.log("response text", text);
-			if (text.length < 2) return "json too short";
-			let jsonstr = text;
-			if (text[0] == "<") {
-				jsonstr = text.replaceAll(/<[^>]*>/g, "");
-			} else if (text[0] != "{") {
-				return "parse error at the first char: " + text[0];
-			}
-			const json = JSON.parse(jsonstr);
-			d.log("json parsed", json);
-			if (json.error) {
-				d.log("json has an item called error", json.error);
-				return "response status " + json.error.code;
-			}
-			const comments = document.createElement("ul");
-			for (const item of json.items) {
-				const comment = item.snippet.topLevelComment.snippet.textDisplay;
+	try {
+		const response = await fetch(url);
+		if (!response.ok) {
+			throw new Error("response status " + response.status);
+		}
+
+		const text = await response.text();
+		d.log("response text", text);
+		if (text.length < 2) {
+			throw new Error("json too short");
+		}
+		let jsonstr = text;
+		if (text[0] == "<") {
+			jsonstr = text.replaceAll(/<[^>]*>/g, "");
+		} else if (text[0] != "{") {
+			throw new Error("parse error at the first char: " + text[0]);
+		}
+
+		const json = JSON.parse(jsonstr);
+		d.log("json parsed", json);
+		if (json.error) {
+			d.log("json has an item called error", json.error);
+			throw new Error("response status " + json.error.code);
+		}
+
+		const comments = document.createElement("ul");
+		for (const item of json.items) {
+			const comment = item.snippet.topLevelComment.snippet.textDisplay;
 				d.log("comment", comment);
 				const commentElement = document.createElement("li");
 				commentElement.textContent = comment.substring(0, MAXCOMLEN);
-				comments.appendChild(commentElement);
-			}
-			if (!comments.hasChildNodes()) {
-				d.log("no comments");
-				return "no comments";
-			}
-			return comments;
-		})
-		.then((comments) => {
-			if (comments instanceof Element) {
-				return cache[videoId] = comments;
-			} else {
-				const ul = document.createElement("ul");
-				const li = document.createElement("li");
-				ul.appendChild(li);
-				if (comments == "response status 403") {
-					li.textContent = "comments disabled for the video";
-					cache[videoId] = ul;
-				} else {
-					li.textContent = comments;
-					// movies with no comments are often just too young
-					// so don't cache them
-					cache[videoId] = false;
-				}
-				return ul;
-			}
-		})
-		.then((ul) => {
-			if (pressed) return;
-			if (anchor != cause) return; // mouse already left
-			const deltaTime = Date.now() - startTime;
-			setTooltip(anchor, ul, deltaTime);
-		})
-		.finally(() => {
-			d.groupEnd();
-		});
+			comments.appendChild(commentElement);
+		}
+		if (!comments.hasChildNodes()) {
+			throw new Error("no comments");
+		}
+		cache[videoId] = comments;
+	} catch (e) {
+		const ul = document.createElement("ul");
+		const li = document.createElement("li");
+		ul.appendChild(li);
+		if (e.message == "response status 403") {
+			li.textContent = "comments disabled for the video";
+			cache[videoId] = ul;
+		} else {
+			li.textContent = e.message;
+			// movies with no comments are often just too young
+			// so don't cache them
+			cache[videoId] = false;
+		}
+	}
+	d.groupEnd();
+	if (pressed) return;
+	if (!cache[videoId]) return;
+	if (anchor != cause) return; // mouse already left
+	const deltaTime = Date.now() - startTime;
+	setTooltip(anchor, cache[videoId], deltaTime);
 }
 
 function getVideoId(url) {
@@ -168,9 +160,8 @@ function mouseEnterListener(event) {
 
 	if (cache[vid]) {
 		if (pressed) return;
-		d.groupCollapsed("cached_" + vid, cache[vid]);
+		d.log("cached_" + vid, cache[vid]);
 		setTooltip(anchor, cache[vid]);
-		d.groupEnd();
 		return;
 	}
 	let storagePromise;
@@ -201,13 +192,12 @@ function mouseEnterListener(event) {
 				warned = true;
 				console.warn("api key is not found");
 					if (confirm("No API key is set.\nOpen options page?"))
-						chrome.runtime.sendMessage({ action: "options" });
-					return;
-				}
-				d.groupCollapsed("fetch_" + vid);
-				cache[vid] = "fetching";
-				// do a fetch even when pressed
-				if (!pressed) {
+					chrome.runtime.sendMessage({ action: "options" });
+				return;
+			}
+			cache[vid] = "fetching";
+			// do a fetch even when pressed
+			if (!pressed) {
 					const ul = document.createElement("ul");
 					const li = document.createElement("li");
 					li.textContent = "⌛ waiting for comments... ⌛";
@@ -277,7 +267,6 @@ function showTip(anchor, comments) {
 		cause = anchor; // avoid showing the tip again
 	};
 	if (!usedtip) {
-		d.log("tooltip created", tooltip);
 		document.body.appendChild(tooltip);
 	}
 
