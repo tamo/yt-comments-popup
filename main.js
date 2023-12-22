@@ -61,8 +61,7 @@ function setLoggers(logLevel) {
 	dM = logLevel > 2 ? console : devnull;
 }
 
-// returns a promise
-function fetchComments(videoId, apiKey) {
+function fetchComments(videoId, apiKey, anchor) {
 	const apiParams = new URLSearchParams({
 		...PARAMS,
 		videoId: videoId,
@@ -72,36 +71,31 @@ function fetchComments(videoId, apiKey) {
 		? apiKey + videoId
 		: "https://www.googleapis.com/youtube/v3/commentThreads?" + apiParams;
 	d.log("url to fetch", url);
-	return fetch(url)
+	const startTime = Date.now();
+	fetch(url)
 		.then((response) => {
 			if (!response.ok) {
 				d.log("response not ok", response);
-				if (response.status == 403) {
-					// comments disabled for the video
-					return "";
-				}
-				// otherwise don't cache it
-				throw new Error("response status " + response.status);
+				return ["response status " + response.status];
 			}
 			return response.text();
 		})
 		.then((text) => {
-			try {
-				switch (text[0]) {
-					case "<":
-						const json = text.replaceAll(/<[^>]*>/g, "");
-						return JSON.parse(json);
-					case "{":
-						return JSON.parse(text);
-					default:
-						return { items: [] };
-				}
-			} catch (e) {
-				return { items: [] };
+			if (text.isArray) return text[0];
+			d.log("response text", text);
+			if (text.length < 2) return "json too short";
+			let jsonstr = text;
+			if (text[0] == "<") {
+				jsonstr = text.replaceAll(/<[^>]*>/g, "");
+			} else if (text[0] != "{") {
+				return "parse error at the first char: " + text[0];
 			}
-		})
-		.then((json) => {
-			d.groupCollapsed("json fetched", json);
+			const json = JSON.parse(jsonstr);
+			d.log("json parsed", json);
+			if (json.error) {
+				d.log("json has an item called error", json.error);
+				return "response status " + json.error.code;
+			}
 			const comments = document.createElement("ul");
 			for (const item of json.items) {
 				const comment = item.snippet.topLevelComment.snippet.textDisplay;
@@ -112,14 +106,38 @@ function fetchComments(videoId, apiKey) {
 			}
 			if (!comments.hasChildNodes()) {
 				d.log("no comments");
-				const commentElement = document.createElement("li");
-				commentElement.textContent = "no comments";
-				comments.appendChild(commentElement);
+				return "no comments";
 			}
+			return comments;
+		})
+		.then((comments) => {
+			if (comments instanceof Element) {
+				return cache[videoId] = comments;
+			} else {
+				const ul = document.createElement("ul");
+				const li = document.createElement("li");
+				ul.appendChild(li);
+				if (comments == "response status 403") {
+					li.textContent = "comments disabled for the video";
+					cache[videoId] = ul;
+				} else {
+					li.textContent = comments;
+					// movies with no comments are often just too young
+					// so don't cache them
+					cache[videoId] = false;
+				}
+				return ul;
+			}
+		})
+		.then((ul) => {
+			if (pressed) return;
+			if (anchor != cause) return; // mouse already left
+			const deltaTime = Date.now() - startTime;
+			setTooltip(anchor, ul, deltaTime);
+		})
+		.finally(() => {
 			d.groupEnd();
-			return (comments);
 		});
-	// don't catch errors here because the caller does
 }
 
 function getVideoId(url) {
@@ -155,20 +173,33 @@ function mouseEnterListener(event) {
 		d.groupEnd();
 		return;
 	}
+	let storagePromise;
 	try {
-		chrome.storage.local.get(
-			{
-				api_key: "",
-				log_level: 1,
-			},
-			(storage) => {
-				setLoggers(storage.log_level);
-				const apiKey =
-					storage.api_key ||
-					(warned ? FALLBACK_URL : "");
-				if (!apiKey) {
-					warned = true;
-					console.warn("api key is not found");
+		storagePromise = chrome.storage.local.get(
+			{ api_key: "", log_level: 1 }
+		);
+	} catch (error) {
+		console.warn(error.message);
+		if (pressed) return;
+		const h1p = document.createElement("div");
+		// chrome extension updated
+		if (error.message === "Extension context invalidated.") {
+			h1p.innerHTML = "<h1>Extension updated</h1><p>Please reload the page</p>";
+		} else {
+			h1p.innerHTML = "<h1>Error</h1><p>" + error.message + "</p>";
+		}
+		setTooltip(anchor, h1p);
+		return;
+	}
+	storagePromise
+		.then((storage) => {
+			setLoggers(storage.log_level);
+			return storage.api_key || (warned ? FALLBACK_URL : "");
+		})
+		.then((apiKey) => {
+			if (!apiKey) {
+				warned = true;
+				console.warn("api key is not found");
 					if (confirm("No API key is set.\nOpen options page?"))
 						chrome.runtime.sendMessage({ action: "options" });
 					return;
@@ -180,39 +211,11 @@ function mouseEnterListener(event) {
 					const ul = document.createElement("ul");
 					const li = document.createElement("li");
 					li.textContent = "⌛ waiting for comments... ⌛";
-					ul.appendChild(li);
-					setTooltip(anchor, ul);
-				}
-				const startTime = Date.now();
-				fetchComments(vid, apiKey)
-					.then((comments) => {
-						cache[vid] = comments;
-						if (pressed) return;
-						const deltaTime = Date.now() - startTime;
-						setTooltip(anchor, comments, deltaTime);
-					})
-					.catch((error) => {
-						console.warn(error.message);
-						cache[vid] = false;
-						hideTips();
-					})
-					.finally(() => {
-						d.groupEnd();
-					});
+				ul.appendChild(li);
+				setTooltip(anchor, ul);
 			}
-		);
-	} catch (error) {
-		if (error.message === "Extension context invalidated.") {
-			if (pressed) return;
-			const h1p = document.createElement("div");
-			h1p.innerHTML = "<h1>Extension updated</h1><p>Please reload the page</p>";
-			setTooltip(anchor, h1p);
-			return;
-		}
-		console.warn(error.message);
-		cache[vid] = false;
-		hideTips();
-	}
+			fetchComments(vid, apiKey, anchor);
+		});
 }
 
 function cutTitle(elem) {
