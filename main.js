@@ -310,9 +310,15 @@ function mouseMoveListener(event) {
 	if (!elem) {
 		dM.log("mouse pointer is out of browser");
 		hideTips();
-	} else {
-		if (!findAncestor(elem, "TOOLTIP") && cause && !cause.contains(elem)) {
-			const ancestorAnchor = findAncestor(elem, "A");
+	} else if (!findAncestor(elem, "TOOLTIP")) {
+		const ancestorAnchor = findAncestor(elem, "A");
+		if (!cause) {
+			if (ancestorAnchor) {
+				dM.log("maybe a dropped mouseEnter, do it now");
+				const newEvent = { target: ancestorAnchor };
+				mouseEnterListener(newEvent);
+			}
+		} else if (!cause.contains(elem)) {
 			if (!ancestorAnchor) {
 				dM.log("mouse pointer is not on the tooltip or on an anchor");
 				hideTips();
