@@ -70,11 +70,13 @@ async function fetchComments(videoId, apiKey, anchor) {
 	const url = apiKey.match(/^https:\/\//)
 		? apiKey + videoId
 		: "https://www.googleapis.com/youtube/v3/commentThreads?" + apiParams;
-	d.groupCollapsed("fetch_" + videoId);
-	d.log("url to fetch", url);
+
 	let uncachedResult;
 	const startTime = Date.now();
 	try {
+		d.groupCollapsed("fetch_" + videoId);
+		d.log("url to fetch", url);
+
 		const response = await fetch(url);
 		if (!response.ok) {
 			throw new Error("response status " + response.status);
@@ -125,8 +127,9 @@ async function fetchComments(videoId, apiKey, anchor) {
 			cache[videoId] = false;
 			uncachedResult = ul;
 		}
+	} finally {
+		d.groupEnd();
 	}
-	d.groupEnd();
 	if (pressed) return;
 	if (anchor != shown) return; // mouse already left
 	const deltaTime = Date.now() - startTime;
