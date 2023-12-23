@@ -32,7 +32,7 @@ const FALLBACK_URL = undefined; // in a form of "https://example.com/?"
 // global variables
 const cache = {};
 let timeout = undefined;
-let cause = undefined;
+let shown = undefined;
 let pressed = false;
 let mouseX = 0;
 let mouseY = 0;
@@ -102,9 +102,9 @@ async function fetchComments(videoId, apiKey, anchor) {
 		const comments = document.createElement("ul");
 		for (const item of json.items) {
 			const comment = item.snippet.topLevelComment.snippet.textDisplay;
-				d.log("comment", comment);
-				const commentElement = document.createElement("li");
-				commentElement.textContent = comment.substring(0, MAXCOMLEN);
+			d.log("comment", comment);
+			const commentElement = document.createElement("li");
+			commentElement.textContent = comment.substring(0, MAXCOMLEN);
 			comments.appendChild(commentElement);
 		}
 		if (!comments.hasChildNodes()) {
@@ -128,7 +128,7 @@ async function fetchComments(videoId, apiKey, anchor) {
 	}
 	d.groupEnd();
 	if (pressed) return;
-	if (anchor != cause) return; // mouse already left
+	if (anchor != shown) return; // mouse already left
 	const deltaTime = Date.now() - startTime;
 	setTooltip(anchor, cache[videoId] || uncachedResult, deltaTime);
 }
@@ -152,12 +152,12 @@ function mouseEnterListener(event) {
 	const vid = getVideoId(anchor.href);
 	if (!vid) return;
 	if (vid === getVideoId(location.href)) return; // current video
-	if (vid === getVideoId(cause?.href)) return;
+	if (vid === getVideoId(shown?.href)) return;
 	if (cache[vid] == "fetching") return;
 
 	hideTips();
 	cutTitles(anchor);
-	cause = anchor;
+	shown = anchor;
 
 	if (cache[vid]) {
 		if (pressed) return;
@@ -192,16 +192,16 @@ function mouseEnterListener(event) {
 			if (!apiKey) {
 				warned = true;
 				console.warn("api key is not found");
-					if (confirm("No API key is set.\nOpen options page?"))
+				if (confirm("No API key is set.\nOpen options page?"))
 					chrome.runtime.sendMessage({ action: "options" });
 				return;
 			}
 			cache[vid] = "fetching";
 			// do a fetch even when pressed
 			if (!pressed) {
-					const ul = document.createElement("ul");
-					const li = document.createElement("li");
-					li.textContent = "⌛ waiting for comments... ⌛";
+				const ul = document.createElement("ul");
+				const li = document.createElement("li");
+				li.textContent = "⌛ waiting for comments... ⌛";
 				ul.appendChild(li);
 				setTooltip(anchor, ul);
 			}
@@ -238,7 +238,7 @@ function setTooltip(anchor, comments, passed = 0) {
 }
 
 function showTip(anchor, comments) {
-	if (anchor && anchor !== cause) return;
+	if (anchor && anchor !== shown) return;
 
 	const fullW = document.documentElement.clientWidth;
 	const fullH = document.documentElement.clientHeight;
@@ -265,7 +265,7 @@ function showTip(anchor, comments) {
 	Object.assign(tooltip.style, TIPSTYLE);
 	tooltip.onclick = () => {
 		hideTips();
-		cause = anchor; // avoid showing the tip again
+		shown = anchor; // avoid showing the tip again
 	};
 	if (!usedtip) {
 		document.body.appendChild(tooltip);
@@ -291,7 +291,7 @@ function showTip(anchor, comments) {
 function hideTips() {
 	clearTimeout(timeout);
 	timeout = undefined;
-	cause = undefined;
+	shown = undefined;
 	if (hiding) return;
 	hiding = setTimeout(() => {
 		for (let tip of document.body.getElementsByTagName("tooltip")) {
@@ -312,20 +312,20 @@ function mouseMoveListener(event) {
 		hideTips();
 	} else if (!findAncestor(elem, "TOOLTIP")) {
 		const ancestorAnchor = findAncestor(elem, "A");
-		if (!cause) {
+		if (!shown) {
 			if (ancestorAnchor) {
 				dM.log("maybe a dropped mouseEnter, do it now");
 				const newEvent = { target: ancestorAnchor };
 				mouseEnterListener(newEvent);
 			}
-		} else if (!cause.contains(elem)) {
+		} else if (!shown.contains(elem)) {
 			if (!ancestorAnchor) {
 				dM.log("mouse pointer is not on the tooltip or on an anchor");
 				hideTips();
 			} else {
 				const eventVid = getVideoId(ancestorAnchor.href);
-				const causeVid = getVideoId(cause.href);
-				if (eventVid !== causeVid) {
+				const shownVid = getVideoId(shown.href);
+				if (eventVid !== shownVid) {
 					dM.log(
 						"mouse pointer is on an anchor " +
 						"whose href is different from tooltip"
