@@ -137,13 +137,8 @@ async function fetchComments(videoId, apiKey, anchor) {
 }
 
 function getVideoId(url) {
-	if (!url || !url.match(/^https:\/\/www\.youtube\.com\/watch\?v=[^&]/)) {
-		return;
-	}
-	return url.replace(
-		/^https:\/\/www\.youtube\.com\/watch\?v=([^&]+)(&.*)?$/,
-		"$1"
-	);
+	const matchArray = url?.match(/^https:\/\/www\.youtube\.com\/watch\?v=([^&]+)(&.*)?$/);
+	return matchArray && matchArray[1];
 }
 
 function mouseEnterListener(event) {
