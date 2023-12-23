@@ -153,9 +153,9 @@ function mouseEnterListener(event) {
 	if (vid === getVideoId(shown?.href)) return;
 	if (cache[vid] == "fetching") return;
 
-	hideTips();
-	cutTitles(anchor);
+	hideTips(); // this does "shown = undefined"
 	shown = anchor;
+	cutTitles(anchor);
 
 	if (cache[vid]) {
 		if (pressed) return;
