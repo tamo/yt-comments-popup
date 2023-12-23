@@ -214,7 +214,7 @@ function cutTitle(elem) {
 	if (title && ![...elem.classList].some((c) => /^ytp-/.test(c))) {
 		elem.setAttribute("oldtitle", title);
 		elem.removeAttribute("title");
-		d.log("title found and removed", elem);
+		d.log("title attribute found and renamed to oldtitle", elem);
 	}
 	h3.textContent = elem.getAttribute("oldtitle");
 	return h3;
