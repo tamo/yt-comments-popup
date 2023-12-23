@@ -101,18 +101,18 @@ async function fetchComments(videoId, apiKey, anchor) {
 			throw new Error("response status " + json.error.code);
 		}
 
-		const comments = document.createElement("ul");
+		const ul = document.createElement("ul");
 		for (const item of json.items) {
 			const comment = item.snippet.topLevelComment.snippet.textDisplay;
 			d.log("comment", comment);
-			const commentElement = document.createElement("li");
-			commentElement.textContent = comment.substring(0, MAXCOMLEN);
-			comments.appendChild(commentElement);
+			const li = document.createElement("li");
+			li.textContent = comment.substring(0, MAXCOMLEN);
+			ul.appendChild(li);
 		}
-		if (!comments.hasChildNodes()) {
+		if (!ul.hasChildNodes()) {
 			throw new Error("no comments");
 		}
-		cache[videoId] = comments;
+		cache[videoId] = ul;
 	} catch (e) {
 		const ul = document.createElement("ul");
 		const li = document.createElement("li");
