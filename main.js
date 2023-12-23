@@ -167,9 +167,10 @@ function mouseEnterListener(event) {
 	}
 	let storagePromise;
 	try {
-		storagePromise = chrome.storage.local.get(
-			{ api_key: "", log_level: 1 }
-		);
+		storagePromise = chrome.storage.local.get({
+			api_key: "",
+			log_level: 1,
+		});
 	} catch (error) {
 		console.warn(error.message);
 		if (pressed) return;
