@@ -192,8 +192,9 @@ function mouseEnterListener(event) {
 			if (!apiKey) {
 				warned = true;
 				console.warn("api key is not found");
-				if (confirm("No API key is set.\nOpen options page?"))
+				if (confirm("No API key is set.\nOpen options page?")) {
 					chrome.runtime.sendMessage({ action: "options" });
+				}
 				return;
 			}
 			cache[vid] = "fetching";
