@@ -2,6 +2,9 @@
 const CTRL = 17; // keycode to stop
 const MAXCOMLEN = 150; // trim comments
 const DELAY = 300; // 1000 = 1 sec
+const LOWERTAG = "ytcptooltip";
+const UPPERTAG = LOWERTAG.toUpperCase();
+const CLASSPREFIX = "ytcp_vid_";
 const MAXWIDTHR = 0.5; // ratio to screen
 const MAXHEIGHTR = 0.7;
 const OFFSETX = 10; // position of tooltip
@@ -37,7 +40,6 @@ let pressed = false;
 let mouseX = 0;
 let mouseY = 0;
 let warned = false;
-let hiding = undefined;
 
 // loggers
 let d, dE, dM;
@@ -244,13 +246,13 @@ function showTip(anchor, comments) {
 	const maxW = fullW * MAXWIDTHR;
 	const maxH = fullH * MAXHEIGHTR;
 
-	const vid = "vid_" + getVideoId(anchor.href);
-	const usedtip = document.querySelector("tooltip." + vid);
+	const vid = CLASSPREFIX + getVideoId(anchor.href);
+	const usedtip = document.querySelector(`${LOWERTAG}.${vid}`);
 	// get values while it's visible
 	const tipX = usedtip ? usedtip.offsetLeft : mouseX + OFFSETX;
 	const tipY = usedtip ? usedtip.offsetTop : mouseY + OFFSETY;
 
-	const tooltip = usedtip || document.createElement("tooltip");
+	const tooltip = usedtip || document.createElement(LOWERTAG);
 	if (!usedtip) {
 		tooltip.className = vid;
 		tooltip.innerHTML = "";
@@ -291,13 +293,9 @@ function hideTips() {
 	clearTimeout(timeout);
 	timeout = undefined;
 	shown = undefined;
-	if (hiding) return;
-	hiding = setTimeout(() => {
-		for (let tip of document.body.getElementsByTagName("tooltip")) {
-			tip.remove();
-		}
-		hiding = undefined;
-	}, 0);
+	for (let tip of document.body.getElementsByTagName(LOWERTAG)) {
+		tip.remove();
+	}
 }
 
 // the only event reliable enough to hide tooltips
@@ -309,7 +307,7 @@ function mouseMoveListener(event) {
 	if (!elem) {
 		dM.log("mouse pointer is out of browser");
 		hideTips();
-	} else if (!findAncestor(elem, "TOOLTIP")) {
+	} else if (!findAncestor(elem, UPPERTAG)) {
 		const ancestorAnchor = findAncestor(elem, "A");
 		if (!shown) {
 			if (ancestorAnchor) {
