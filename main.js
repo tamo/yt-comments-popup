@@ -72,6 +72,7 @@ async function fetchComments(videoId, apiKey, anchor) {
 		: "https://www.googleapis.com/youtube/v3/commentThreads?" + apiParams;
 	d.groupCollapsed("fetch_" + videoId);
 	d.log("url to fetch", url);
+	let uncachedResult;
 	const startTime = Date.now();
 	try {
 		const response = await fetch(url);
@@ -122,14 +123,14 @@ async function fetchComments(videoId, apiKey, anchor) {
 			// movies with no comments are often just too young
 			// so don't cache them
 			cache[videoId] = false;
+			uncachedResult = ul;
 		}
 	}
 	d.groupEnd();
 	if (pressed) return;
-	if (!cache[videoId]) return;
 	if (anchor != cause) return; // mouse already left
 	const deltaTime = Date.now() - startTime;
-	setTooltip(anchor, cache[videoId], deltaTime);
+	setTooltip(anchor, cache[videoId] || uncachedResult, deltaTime);
 }
 
 function getVideoId(url) {
