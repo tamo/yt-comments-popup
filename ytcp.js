@@ -175,7 +175,12 @@
 			console.warn(error.message);
 			if (pressed) return;
 			const h1p = document.createElement("div");
-			h1p.innerHTML = `<h1>Error</h1><p>${error.message}</p>`;
+			const h1 = document.createElement("h1");
+			const p = document.createElement("p");
+			h1p.appendChild(h1);
+			h1p.appendChild(p);
+			h1.innerText = "Error";
+			p.innerText = error.message;
 			setTooltip(anchor, h1p);
 			return;
 		}
