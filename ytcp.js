@@ -374,15 +374,15 @@
 	// wipe tooltips every time href changes
 	/* // personally i don't need this feature
 	let prevHref = location.href;
-	window.addEventListener("load", () => {
-		const observer = new MutationObserver((mutations) => {
+	function loadListener(event) {
+		new MutationObserver((mutations) => {
 			if (prevHref != location.href) {
 				d.log("href changed from", prevHref, "to", location.href);
 				hideTips();
 				prevHref = location.href;
 			}
-		});
-		observer.observe(document.body, { childList: true, subtree: true });
-	});
+		}).observe(document.body, { childList: true, subtree: true });
+	}
+	window.addEventListener("load", loadListener);
 	*/
 })();
