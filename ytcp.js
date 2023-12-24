@@ -138,6 +138,12 @@
 	}
 
 	function mouseEnterListener(event) {
+		if (!chrome.runtime?.id) { // for chrome
+			if (confirm("YTCP updated.\nReload page?")) {
+				location.reload();
+			}
+			return;
+		}
 		const anchor = event.target;
 		dE.log("mouseenter", event, "target", anchor);
 		if (anchor.tagName !== "A") return;
@@ -169,12 +175,7 @@
 			console.warn(error.message);
 			if (pressed) return;
 			const h1p = document.createElement("div");
-			// chrome extension updated
-			if (error.message === "Extension context invalidated.") {
-				h1p.innerHTML = "<h1>Extension updated</h1><p>Please reload the page</p>";
-			} else {
-				h1p.innerHTML = "<h1>Error</h1><p>" + error.message + "</p>";
-			}
+			h1p.innerHTML = `<h1>Error</h1><p>${error.message}</p>`;
 			setTooltip(anchor, h1p);
 			return;
 		}
