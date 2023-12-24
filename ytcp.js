@@ -103,31 +103,24 @@ async function fetchComments(videoId, apiKey, anchor) {
 			throw new Error("response status " + json.error.code);
 		}
 
-		const ul = document.createElement("ul");
+		const ul = commentList();
 		for (const item of json.items) {
 			const comment = item.snippet.topLevelComment.snippet.textDisplay;
 			d.log("comment", comment);
-			const li = document.createElement("li");
-			li.textContent = comment.substring(0, MAXCOMLEN);
-			ul.appendChild(li);
+			ul.appendChild(singleComment(comment.substring(0, MAXCOMLEN)));
 		}
 		if (!ul.hasChildNodes()) {
 			throw new Error("no comments");
 		}
 		cache[videoId] = ul;
 	} catch (e) {
-		const ul = document.createElement("ul");
-		const li = document.createElement("li");
-		ul.appendChild(li);
 		if (e.message == "response status 403") {
-			li.textContent = "comments disabled for the video";
-			cache[videoId] = ul;
+			cache[videoId] = commentList("comments disabled for the video");
 		} else {
-			li.textContent = e.message;
 			// movies with no comments are often just too young
 			// so don't cache them
 			cache[videoId] = false;
-			uncachedResult = ul;
+			uncachedResult = commentList(e.message);
 		}
 	} finally {
 		d.groupEnd();
@@ -201,11 +194,7 @@ function mouseEnterListener(event) {
 			cache[vid] = "fetching";
 			// do a fetch even when pressed
 			if (!pressed) {
-				const ul = document.createElement("ul");
-				const li = document.createElement("li");
-				li.textContent = "⌛ waiting for comments... ⌛";
-				ul.appendChild(li);
-				setTooltip(anchor, ul);
+				setTooltip(anchor, commentList("⌛ waiting for comments... ⌛"));
 			}
 			fetchComments(vid, apiKey, anchor);
 		});
@@ -299,6 +288,20 @@ function hideTips() {
 	for (let tip of document.body.getElementsByTagName(LOWERTAG)) {
 		tip.remove();
 	}
+}
+
+function commentList(text) {
+	const ul = document.createElement("ul");
+	if (text) {
+		ul.appendChild(singleComment(text));
+	}
+	return ul;
+}
+
+function singleComment(text) {
+	const li = document.createElement("li");
+	li.textContent = text;
+	return li;
 }
 
 // the only event reliable enough to hide tooltips
