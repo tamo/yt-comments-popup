@@ -214,6 +214,8 @@ function mouseEnterListener(event) {
 function cutTitle(elem) {
 	const h3 = document.createElement("h3");
 	const title = elem.getAttribute("title");
+	// elem.classList.contains() doesn't accept regex or glob
+	// ytp-* are player UIs
 	if (title && ![...elem.classList].some((c) => /^ytp-/.test(c))) {
 		elem.setAttribute("oldtitle", title);
 		elem.removeAttribute("title");
