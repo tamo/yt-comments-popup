@@ -151,8 +151,8 @@
 			});
 	}
 
-	function cutTitles(anchor) {
-		cutTitle(anchor); // disable anchor tooltips
+	function cutTitles(elem) {
+		// disable anchor tooltips
 		const title = elem.getAttribute("title");
 		// elem.classList.contains() doesn't accept regex or glob
 		if (title) {
@@ -160,7 +160,7 @@
 			elem.removeAttribute("title");
 			d.log("title attribute found and renamed to oldtitle", elem);
 		}
-		[...anchor.children].forEach((child) => {
+		[...elem.children].forEach((child) => {
 			cutTitles(child); // even spans can have titles
 		});
 	}
