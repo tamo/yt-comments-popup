@@ -154,7 +154,6 @@
 	function cutTitles(elem) {
 		// disable anchor tooltips
 		const title = elem.getAttribute("title");
-		// elem.classList.contains() doesn't accept regex or glob
 		if (title) {
 			elem.setAttribute("oldtitle", title);
 			elem.removeAttribute("title");
