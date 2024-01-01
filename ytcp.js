@@ -192,6 +192,9 @@
 			tooltip.className = cname;
 		}
 		tooltip.innerHTML = "";
+		datasort = document.createElement("p");
+		datasort.innerText = comments.getAttribute("data-sort");
+		tooltip.appendChild(datasort);
 		tooltip.appendChild(comments);
 		Object.assign(tooltip.style, TIPSTYLE);
 		tooltip.onclick = () => {
