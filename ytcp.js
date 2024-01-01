@@ -68,6 +68,12 @@
 			const text = await response.text();
 			const dom = new DOMParser().parseFromString(text, "text/html");
 			const div = dom.querySelector("div.is-active.bookmarks-sort-panel");
+			let pes = div;
+			while (pes = pes.previousElementSibling) {
+				if (pes.classList.contains("entry-comment-unavailable")) {
+					div.appendChild(pes);
+				}
+			}
 			d.log("div", div);
 			cache[url] = div;
 		} catch (e) {
