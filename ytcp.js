@@ -1,7 +1,6 @@
 (() => {
 	// constants, or settings
 	const CTRL = 17; // keycode to stop
-	const MAXCOMLEN = 150; // trim comments
 	const DELAY = 300; // 1000 = 1 sec
 	const LOWERTAG = "ytcptooltip";
 	const UPPERTAG = LOWERTAG.toUpperCase();
@@ -10,14 +9,6 @@
 	const MAXHEIGHTR = 0.7;
 	const OFFSETX = 10; // position of tooltip
 	const OFFSETY = 10; // relative to cursor
-	const PARAMS = {
-		maxResults: 10, // default is 20
-		order: "relevance", // or "time"
-		//moderationStatus: "published", // "heldForReview" or "likelySpam"
-		//searchTerms: "",
-		part: "snippet",
-		textFormat: "plaintext", // cannot trim "html" safely
-	};
 	const TIPSTYLE = {
 		visibility: "hidden", // to be made visible later
 		display: "block", // "none" prevents size calculation
@@ -31,7 +22,6 @@
 		boxShadow: "0 0 5px 2px rgba(255,255,255,0.5)",
 		padding: "3px",
 	};
-	const FALLBACK_URL = undefined; // in a form of "https://example.com/?"
 
 	// global variables
 	const cache = {};
@@ -40,7 +30,6 @@
 	let pressed = false;
 	let mouseX = 0;
 	let mouseY = 0;
-	let warned = false;
 
 	// loggers
 	let d, dE, dM;
@@ -64,21 +53,12 @@
 		dM = logLevel > 2 ? console : devnull;
 	}
 
-	async function fetchComments(videoId, apiKey, anchor) {
-		const apiParams = new URLSearchParams({
-			...PARAMS,
-			videoId: videoId,
-			key: apiKey,
-		});
-		const url = apiKey.match(/^https:\/\//)
-			? apiKey + videoId
-			: "https://www.googleapis.com/youtube/v3/commentThreads?" + apiParams;
-
+	async function fetchComments(anchor) {
+		const url = anchor.href;
 		let uncachedResult;
 		const startTime = Date.now();
 		try {
-			d.groupCollapsed("fetch_" + videoId);
-			d.log("url to fetch", url);
+			d.groupCollapsed("fetch", url);
 
 			const response = await fetch(url);
 			if (!response.ok) {
@@ -86,89 +66,62 @@
 			}
 
 			const text = await response.text();
-			d.log("response text", text);
-			if (text.length < 2) {
-				throw new Error("json too short");
-			}
-			let jsonstr = text;
-			if (text[0] == "<") {
-				jsonstr = text.replaceAll(/<[^>]*>/g, "");
-			} else if (text[0] != "{") {
-				throw new Error("parse error at the first char: " + text[0]);
-			}
-
-			const json = JSON.parse(jsonstr);
-			d.log("json parsed", json);
-			if (json.error) {
-				d.log("json has an item called error", json.error);
-				throw new Error("response status " + json.error.code);
-			}
-
-			const ul = commentList();
-			for (const item of json.items) {
-				const comment = item.snippet.topLevelComment.snippet.textDisplay;
-				d.log("comment", comment);
-				ul.appendChild(singleComment(comment.substring(0, MAXCOMLEN)));
-			}
-			if (!ul.hasChildNodes()) {
-				throw new Error("no comments");
-			}
-			cache[videoId] = ul;
+			const dom = new DOMParser().parseFromString(text, "text/html");
+			const div = dom.querySelector("div.is-active.bookmarks-sort-panel");
+			d.log("div", div);
+			cache[url] = div;
 		} catch (e) {
-			if (e.message == "response status 403") {
-				cache[videoId] = commentList("comments disabled for the video");
-			} else {
-				// movies with no comments are often just too young
-				// so don't cache them
-				cache[videoId] = false;
-				uncachedResult = commentList(e.message);
-			}
+			// movies with no comments are often just too young
+			// so don't cache them
+			cache[url] = false;
+			uncachedResult = commentList(e.message);
 		} finally {
 			d.groupEnd();
 		}
 		if (pressed) return;
 		if (anchor != shown) return; // mouse already left
 		const deltaTime = Date.now() - startTime;
-		setTooltip(anchor, cache[videoId] || uncachedResult, deltaTime);
+		setTooltip(anchor, cache[url] || uncachedResult, deltaTime);
 	}
 
-	function getVideoId(url) {
-		const matchArray = url?.match(/^https:\/\/www\.youtube\.com\/watch\?v=([^&]+)(&.*)?$/);
-		return matchArray && matchArray[1];
+	function enc(url) {
+		if (url?.match(/^https?:\/\/b\.hatena\.ne\.jp\/entry\//)) {
+			return btoa(url)
+				.replace(/=/g, "")
+				.replace(/\+/g, "-")
+				.replace(/\//g, "_");
+		}
 	}
 
 	function mouseEnterListener(event) {
 		if (!chrome.runtime?.id) { // for chrome
-			if (confirm("YTCP updated.\nReload page?")) {
-				location.reload();
-			}
+			alert("HBCP updated.");
 			return;
 		}
 		const anchor = event.target;
 		dE.log("mouseenter", event, "target", anchor);
 		if (anchor.tagName !== "A") return;
-		if (anchor.role === "button") return; // e.g. next button on player
 
-		const vid = getVideoId(anchor.href);
-		if (!vid) return;
-		if (vid === getVideoId(location.href)) return; // current video
-		if (vid === getVideoId(shown?.href)) return;
-		if (cache[vid] == "fetching") return;
+		const url = anchor.href;
+		if (!enc(url)) return;
+		if (url === location.href) return; // current page
+		if (url === shown?.href) return;
+		if (findAncestor(anchor, UPPERTAG)) return;
+		if (cache[url] == "fetching") return;
 
 		hideTips(); // this does "shown = undefined"
 		shown = anchor;
 		cutTitles(anchor);
 
-		if (cache[vid]) {
+		if (cache[url]) {
 			if (pressed) return;
-			d.log("cached_" + vid, cache[vid]);
-			setTooltip(anchor, cache[vid]);
+			d.log("cached_" + url, cache[url]);
+			setTooltip(anchor, cache[url]);
 			return;
 		}
 		let storagePromise;
 		try {
 			storagePromise = chrome.storage.local.get({
-				api_key: "",
 				log_level: 1,
 			});
 		} catch (error) {
@@ -187,46 +140,29 @@
 		storagePromise
 			.then((storage) => {
 				setLoggers(storage.log_level);
-				return storage.api_key || (warned ? FALLBACK_URL : "");
 			})
-			.then((apiKey) => {
-				if (!apiKey) {
-					warned = true;
-					console.warn("api key is not found");
-					if (confirm("No API key is set.\nOpen options page?")) {
-						chrome.runtime.sendMessage({ action: "options" });
-					}
-					return;
-				}
-				cache[vid] = "fetching";
+			.then(() => {
+				cache[url] = "fetching";
 				// do a fetch even when pressed
 				if (!pressed) {
 					setTooltip(anchor, commentList("⌛ waiting for comments... ⌛"));
 				}
-				fetchComments(vid, apiKey, anchor);
+				fetchComments(anchor);
 			});
 	}
 
-	function cutTitle(elem) {
-		const h3 = document.createElement("h3");
+	function cutTitles(anchor) {
+		cutTitle(anchor); // disable anchor tooltips
 		const title = elem.getAttribute("title");
 		// elem.classList.contains() doesn't accept regex or glob
-		// ytp-* are player UIs
-		if (title && ![...elem.classList].some((c) => /^ytp-/.test(c))) {
+		if (title) {
 			elem.setAttribute("oldtitle", title);
 			elem.removeAttribute("title");
 			d.log("title attribute found and renamed to oldtitle", elem);
 		}
-		h3.textContent = elem.getAttribute("oldtitle");
-		return h3;
-	}
-
-	function cutTitles(anchor) {
-		const prefix = cutTitle(anchor); // disable anchor tooltips
-		anchor.querySelectorAll("*").forEach((child) => {
-			prefix.textContent += cutTitle(child).textContent; // even spans can have titles
+		[...anchor.children].forEach((child) => {
+			cutTitles(child); // even spans can have titles
 		});
-		return prefix;
 	}
 
 	function setTooltip(anchor, comments, passed = 0) {
@@ -245,22 +181,17 @@
 		const maxW = fullW * MAXWIDTHR;
 		const maxH = fullH * MAXHEIGHTR;
 
-		const vid = CLASSPREFIX + getVideoId(anchor.href);
-		const usedtip = document.querySelector(`${LOWERTAG}.${vid}`);
+		const cname = CLASSPREFIX + enc(anchor.href);
+		const usedtip = document.querySelector(`${LOWERTAG}.${cname}`);
 		// get values while it's visible
 		const tipX = usedtip ? usedtip.offsetLeft : mouseX + OFFSETX;
 		const tipY = usedtip ? usedtip.offsetTop : mouseY + OFFSETY;
 
 		const tooltip = usedtip || document.createElement(LOWERTAG);
 		if (!usedtip) {
-			tooltip.className = vid;
-			tooltip.innerHTML = "";
-			tooltip.appendChild(cutTitles(anchor));
-		} else {
-			for (let ul of tooltip.getElementsByTagName("ul")) {
-				ul.remove();
-			}
+			tooltip.className = cname;
 		}
+		tooltip.innerHTML = "";
 		tooltip.appendChild(comments);
 		Object.assign(tooltip.style, TIPSTYLE);
 		tooltip.onclick = () => {
@@ -298,17 +229,17 @@
 	}
 
 	function commentList(text) {
-		const ul = document.createElement("ul");
+		const div = document.createElement("div");
 		if (text) {
-			ul.appendChild(singleComment(text));
+			div.appendChild(singleComment(text));
 		}
-		return ul;
+		return div;
 	}
 
 	function singleComment(text) {
-		const li = document.createElement("li");
-		li.textContent = text;
-		return li;
+		const p = document.createElement("p");
+		p.textContent = text;
+		return p;
 	}
 
 	// the only event reliable enough to hide tooltips
@@ -333,9 +264,7 @@
 					dM.log("mouse pointer is not on the tooltip or on an anchor");
 					hideTips();
 				} else {
-					const eventVid = getVideoId(ancestorAnchor.href);
-					const shownVid = getVideoId(shown.href);
-					if (eventVid !== shownVid) {
+					if (ancestorAnchor.href !== shown.href) {
 						dM.log(
 							"mouse pointer is on an anchor " +
 							"whose href is different from tooltip"

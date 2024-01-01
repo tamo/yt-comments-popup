@@ -1,10 +1,10 @@
 {
-	"name": "YT Comments Popup",
-	"version": "1.2.4",
+	"name": "HB Comments Popup",
+	"version": "0",
 	"icons": {
 		"128": "ytcp.png"
 	},
-	"description": "Preview YT comments by hovering over links unless Ctrl is pressed",
+	"description": "Preview HB comments by hovering over links unless Ctrl is pressed",
 	"manifest_version": 3,
 	"permissions": [
 		"storage"
@@ -12,7 +12,7 @@
 	"content_scripts": [
 		{
 			"js": ["ytcp.js"],
-			"matches": ["https://www.youtube.com/*"]
+			"matches": ["https://b.hatena.ne.jp/*"]
 		}
 	],
 	"options_ui": {
