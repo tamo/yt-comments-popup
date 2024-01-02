@@ -71,7 +71,7 @@
 			let pes = div;
 			while (pes = pes.previousElementSibling) {
 				if (pes.classList.contains("entry-comment-unavailable")) {
-					div.appendChild(pes);
+					div.insertBefore(pes, div.firstChild);
 				}
 			}
 			d.log("div", div);
