@@ -13,7 +13,7 @@
 		visibility: "hidden", // to be made visible later
 		display: "block", // "none" prevents size calculation
 		position: "fixed",
-		overflow: "hidden",
+		overflow: "hidden scroll",
 		left: 0, // will be placed near the cursor later
 		top: 0,
 		zIndex: 9999999,
