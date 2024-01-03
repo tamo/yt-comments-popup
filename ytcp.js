@@ -208,7 +208,7 @@
 		const prefix = document.createElement("h3");
 		prefix.textContent = elem.getAttribute("oldtitle");
 
-		elem.querySelectorAll("*").forEach((child) => {
+		[...elem.children].forEach((child) => {
 			prefix.textContent += cutTitles(child).textContent; // even spans can have titles
 		});
 		return prefix;
