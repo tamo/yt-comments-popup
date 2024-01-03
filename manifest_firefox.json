@@ -7,8 +7,5 @@
 	"developer": {
 		"name": "Tamotsu Takahashi",
 		"url": "https://github.com/tamo/yt-comments-popup/"
-	},
-	"background": {
-		"scripts": ["background.js"]
 	}
 }
