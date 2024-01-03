@@ -74,7 +74,7 @@
 			? apiKey + videoId
 			: "https://www.googleapis.com/youtube/v3/commentThreads?" + apiParams;
 
-		let uncachedResult;
+		let result;
 		const startTime = Date.now();
 		try {
 			d.groupCollapsed("fetch_" + videoId);
@@ -113,23 +113,21 @@
 			if (!ul.hasChildNodes()) {
 				throw new Error("no comments");
 			}
-			cache[videoId] = ul;
+			result = cache[videoId] = ul;
 		} catch (e) {
 			if (e.message == "response status 403") {
-				cache[videoId] = commentList("comments disabled for the video");
+				result = cache[videoId] = commentList("comments disabled for the video");
 			} else {
 				// movies with no comments are often just too young
 				// so don't cache them
 				cache[videoId] = false;
-				uncachedResult = commentList(e.message);
+				result = commentList(e.message);
 			}
 		} finally {
 			d.groupEnd();
 		}
-		if (pressed) return;
 		if (anchor != shown) return; // mouse already left
-		const deltaTime = Date.now() - startTime;
-		setTooltip(anchor, cache[videoId] || uncachedResult, deltaTime);
+		setTooltip(anchor, result, Date.now() - startTime);
 	}
 
 	function getVideoId(url) {
@@ -138,16 +136,12 @@
 	}
 
 	function mouseEnterListener(event) {
-		if (!chrome.runtime?.id) { // for chrome
-			if (confirm("YTCP updated.\nReload page?")) {
-				location.reload();
-			}
-			return;
-		}
 		const anchor = event.target;
+		if (!anchor) return;
 		dE.log("mouseenter", event, "target", anchor);
 		if (anchor.tagName !== "A") return;
 		if (anchor.role === "button") return; // e.g. next button on player
+		if (findAncestor(anchor, UPPERTAG)) return;
 
 		const vid = getVideoId(anchor.href);
 		if (!vid) return;
@@ -160,7 +154,6 @@
 		cutTitles(anchor);
 
 		if (cache[vid]) {
-			if (pressed) return;
 			d.log("cached_" + vid, cache[vid]);
 			setTooltip(anchor, cache[vid]);
 			return;
@@ -173,14 +166,11 @@
 			});
 		} catch (error) {
 			console.warn(error.message);
-			if (pressed) return;
 			const h1p = document.createElement("div");
-			const h1 = document.createElement("h1");
-			const p = document.createElement("p");
-			h1p.appendChild(h1);
-			h1p.appendChild(p);
-			h1.innerText = "Error";
-			p.innerText = error.message;
+			h1p.appendChild(document.createElement("h1"))
+				.innerText = "Error";
+			h1p.appendChild(document.createElement("p"))
+				.innerText = error.message;
 			setTooltip(anchor, h1p);
 			return;
 		}
@@ -199,16 +189,14 @@
 					return;
 				}
 				cache[vid] = "fetching";
+				setTooltip(anchor, commentList("⌛ waiting for comments... ⌛"));
 				// do a fetch even when pressed
-				if (!pressed) {
-					setTooltip(anchor, commentList("⌛ waiting for comments... ⌛"));
-				}
 				fetchComments(vid, apiKey, anchor);
 			});
 	}
 
-	function cutTitle(elem) {
-		const h3 = document.createElement("h3");
+	// disable title tooltips
+	function cutTitles(elem) {
 		const title = elem.getAttribute("title");
 		// elem.classList.contains() doesn't accept regex or glob
 		// ytp-* are player UIs
@@ -217,20 +205,19 @@
 			elem.removeAttribute("title");
 			d.log("title attribute found and renamed to oldtitle", elem);
 		}
-		h3.textContent = elem.getAttribute("oldtitle");
-		return h3;
-	}
+		const prefix = document.createElement("h3");
+		prefix.textContent = elem.getAttribute("oldtitle");
 
-	function cutTitles(anchor) {
-		const prefix = cutTitle(anchor); // disable anchor tooltips
-		anchor.querySelectorAll("*").forEach((child) => {
-			prefix.textContent += cutTitle(child).textContent; // even spans can have titles
+		elem.querySelectorAll("*").forEach((child) => {
+			prefix.textContent += cutTitles(child).textContent; // even spans can have titles
 		});
 		return prefix;
 	}
 
 	function setTooltip(anchor, comments, passed = 0) {
 		clearTimeout(timeout);
+		if (pressed) return;
+
 		timeout = setTimeout(
 			showTip.bind(null, anchor, comments),
 			Math.max(0, DELAY - passed)
@@ -240,51 +227,47 @@
 	function showTip(anchor, comments) {
 		if (anchor && anchor !== shown) return;
 
-		const fullW = document.documentElement.clientWidth;
-		const fullH = document.documentElement.clientHeight;
-		const maxW = fullW * MAXWIDTHR;
-		const maxH = fullH * MAXHEIGHTR;
-
-		const vid = CLASSPREFIX + getVideoId(anchor.href);
-		const usedtip = document.querySelector(`${LOWERTAG}.${vid}`);
+		const cname = CLASSPREFIX + getVideoId(anchor.href);
+		const usedtip = document.querySelector(`${LOWERTAG}.${cname}`);
+		while (usedtip?.firstChild) usedtip.removeChild(usedtip.firstChild);
 		// get values while it's visible
-		const tipX = usedtip ? usedtip.offsetLeft : mouseX + OFFSETX;
-		const tipY = usedtip ? usedtip.offsetTop : mouseY + OFFSETY;
+		const tipX = Math.max(0, usedtip ? usedtip.offsetLeft : mouseX + OFFSETX);
+		const tipY = Math.max(0, usedtip ? usedtip.offsetTop : mouseY + OFFSETY);
 
 		const tooltip = usedtip || document.createElement(LOWERTAG);
-		if (!usedtip) {
-			tooltip.className = vid;
-			tooltip.innerHTML = "";
-			tooltip.appendChild(cutTitles(anchor));
-		} else {
-			for (let ul of tooltip.getElementsByTagName("ul")) {
-				ul.remove();
-			}
-		}
+		tooltip.appendChild(cutTitles(anchor));
 		tooltip.appendChild(comments);
-		Object.assign(tooltip.style, TIPSTYLE);
-		tooltip.onclick = () => {
-			hideTips();
-			shown = anchor; // avoid showing the tip again
-		};
+		Object.assign(tooltip, {
+			className: cname,
+			onclick: () => {
+				hideTips();
+				shown = anchor; // avoid showing the tip again
+			},
+		})
 		if (!usedtip) {
 			document.body.appendChild(tooltip);
 		}
 
-		// first, calculate maximum
-		tooltip.style.left = Math.min(fullW - maxW, Math.max(tipX, 0)) + "px";
-		tooltip.style.top = Math.min(fullH - maxH, Math.max(tipY, 0)) + "px";
-		tooltip.style.maxWidth = maxW + "px";
-		tooltip.style.maxHeight = maxH + "px";
+		const fullW = document.documentElement.clientWidth;
+		const fullH = document.documentElement.clientHeight;
+		const maxW = fullW * MAXWIDTHR;
+		const maxH = fullH * MAXHEIGHTR;
+		Object.assign(tooltip.style, {
+			...TIPSTYLE,
+			// first, calculate maximum
+			left: Math.min(fullW - maxW, Math.max(tipX, 0)) + "px",
+			top: Math.min(fullH - maxH, Math.max(tipY, 0)) + "px",
+			maxWidth: maxW + "px",
+			maxHeight: maxH + "px",
+		});
 
 		// second, calculate x and y from real w and h
-		const tipW = tooltip.offsetWidth;
-		const tipH = tooltip.offsetHeight;
-		tooltip.style.left = Math.min(fullW - tipW, Math.max(tipX, 0)) + "px";
-		tooltip.style.top = Math.min(fullH - tipH, Math.max(tipY, 0)) + "px";
+		Object.assign(tooltip.style, {
+			left: Math.min(fullW - tooltip.offsetWidth, tipX) + "px",
+			top: Math.min(fullH - tooltip.offsetHeight, tipY) + "px",
+			visibility: "visible",
+		})
 
-		// last, make it visible
-		tooltip.style.visibility = "visible";
 		d.log("tooltip shown", tooltip.className, tooltip);
 	}
 
@@ -314,46 +297,29 @@
 	// the only event reliable enough to hide tooltips
 	// others are not useful when mouse moves fast
 	function mouseMoveListener(event) {
-		const elem = document.elementFromPoint(event.clientX, event.clientY);
+		mouseX = event.clientX;
+		mouseY = event.clientY;
+
+		const elem = document.elementFromPoint(mouseX, mouseY);
 		dM.groupCollapsed("mousemove");
 		dM.log(event, "element", elem);
 		if (!elem) {
 			dM.log("mouse pointer is out of browser");
-			hideTips();
 		} else if (!findAncestor(elem, UPPERTAG)) {
 			const ancestorAnchor = findAncestor(elem, "A");
-			if (!shown) {
-				if (ancestorAnchor) {
-					dM.log("maybe a dropped mouseEnter, do it now");
-					const newEvent = { target: ancestorAnchor };
-					mouseEnterListener(newEvent);
-				}
-			} else if (!shown.contains(elem)) {
-				if (!ancestorAnchor) {
-					dM.log("mouse pointer is not on the tooltip or on an anchor");
-					hideTips();
-				} else {
-					const eventVid = getVideoId(ancestorAnchor.href);
-					const shownVid = getVideoId(shown.href);
-					if (eventVid !== shownVid) {
-						dM.log(
-							"mouse pointer is on an anchor " +
-							"whose href is different from tooltip"
-						);
-						hideTips();
-					}
-				}
+			if (shown && (!ancestorAnchor || ancestorAnchor.href !== shown.href)) {
+				dM.log("mouse pointer is not on the tooltip or on the sho anchor");
+				hideTips();
+			} else if (!shown && ancestorAnchor) {
+				dM.log("maybe a dropped mouseEnter, do it now");
+				mouseEnterListener({ target: ancestorAnchor });
 			}
 		}
 		dM.groupEnd();
-
-		mouseX = event.clientX;
-		mouseY = event.clientY;
 	}
 
 	function findAncestor(elem, type) {
-		if (!elem) return;
-		if (elem.tagName === "BODY") return;
+		if (!elem || elem.tagName === "BODY") return;
 		if (elem.tagName === type) return elem;
 		return findAncestor(elem.parentElement, type);
 	}
