@@ -24,7 +24,6 @@
 	};
 
 	// global variables
-	const cache = {};
 	let timeout = undefined;
 	let shown = undefined;
 	let pressed = false;
@@ -52,11 +51,9 @@
 					break;
 				}
 			}
-			result = cache[url] = div;
+			sessionStorage.setItem(url, div.outerHTML);
+			result = div;
 		} catch (e) {
-			// movies with no comments are often just too young
-			// so don't cache them
-			cache[url] = false;
 			result = commentList(e.message);
 		}
 		if (anchor != shown) return; // mouse already left
@@ -85,20 +82,25 @@
 			!enc(url)
 			|| url === location.href
 			|| url === shown?.href
-			|| cache[url] == "fetching"
 		) return;
+
+		const stored = sessionStorage.getItem(url);
+		if (stored == "fetching") return;
 
 		hideTips(); // this does "shown = undefined"
 		shown = anchor;
 		cutTitles(anchor);
 
-		if (cache[url]) {
-			console.log("cache found", url, cache[url]);
-			setTooltip(anchor, cache[url]);
+		if (stored) {
+			const cdom = new DOMParser()
+				.parseFromString(stored, "text/html")
+				.body.firstChild;
+			console.log("cache found", url, cdom);
+			setTooltip(anchor, cdom);
 			return;
 		}
 
-		cache[url] = "fetching";
+		sessionStorage.setItem(url, "fetching");
 		console.log("fetch", url);
 		// do a fetch even when pressed
 		setTooltip(anchor, commentList("⌛ waiting for comments... ⌛"));
