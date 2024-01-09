@@ -243,7 +243,7 @@
 				hideTips();
 				shown = anchor; // avoid showing the tip again
 			},
-		})
+		});
 		if (!usedtip) {
 			document.body.appendChild(tooltip);
 		}
@@ -255,18 +255,17 @@
 		Object.assign(tooltip.style, {
 			...TIPSTYLE,
 			// first, calculate maximum
-			left: Math.min(fullW - maxW, Math.max(tipX, 0)) + "px",
-			top: Math.min(fullH - maxH, Math.max(tipY, 0)) + "px",
+			left: Math.min(fullW - maxW, tipX) + "px",
+			top: Math.min(fullH - maxH, tipY) + "px",
 			maxWidth: maxW + "px",
 			maxHeight: maxH + "px",
 		});
-
 		// second, calculate x and y from real w and h
 		Object.assign(tooltip.style, {
 			left: Math.min(fullW - tooltip.offsetWidth, tipX) + "px",
 			top: Math.min(fullH - tooltip.offsetHeight, tipY) + "px",
 			visibility: "visible",
-		})
+		});
 
 		d.log("tooltip shown", tooltip.className, tooltip);
 	}
