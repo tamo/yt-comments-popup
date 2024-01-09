@@ -171,7 +171,7 @@
 			left: Math.min(fullW - tooltip.offsetWidth, tipX) + "px",
 			top: Math.min(fullH - tooltip.offsetHeight, tipY) + "px",
 			visibility: "visible",
-		})
+		});
 
 		console.log("tooltip shown", anchor.href, tooltip);
 	}
