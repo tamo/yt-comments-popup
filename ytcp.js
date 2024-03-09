@@ -80,28 +80,29 @@
 			d.groupCollapsed("fetch_" + videoId);
 			d.log("url to fetch", url);
 
+			let json;
 			const response = await fetch(url);
-			if (!response.ok) {
-				throw new Error("response status " + response.status);
+			try {
+				// text may be used even if response.status == 4xx
+				const text = await response.text();
+				d.log("response text", text);
+				const jsonstr = ((text?.[0] == "<")
+					? text.replaceAll(/<[^>]*>/g, "")
+					: text
+				);
+				json = JSON.parse(jsonstr);
+				d.log("json parsed", json);
+			} catch (e) {
+				if (!response.ok) {
+					throw new Error("response status " + response.status);
+				} else {
+					throw e;
+				}
 			}
 
-			const text = await response.text();
-			d.log("response text", text);
-			if (text.length < 2) {
-				throw new Error("json too short");
-			}
-			let jsonstr = text;
-			if (text[0] == "<") {
-				jsonstr = text.replaceAll(/<[^>]*>/g, "");
-			} else if (text[0] != "{") {
-				throw new Error("parse error at the first char: " + text[0]);
-			}
-
-			const json = JSON.parse(jsonstr);
-			d.log("json parsed", json);
 			if (json.error) {
 				d.log("json has an item called error", json.error);
-				throw new Error("response status " + json.error.code);
+				throw new Error(json.error?.errors?.[0]?.reason || "response status " + json.error.code);
 			}
 
 			const ul = commentList();
