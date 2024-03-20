@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: build chrome extension
         uses: cardinalby/webext-buildtools-pack-extension-dir-action@v1
         with:
@@ -26,7 +26,7 @@ jobs:
           zipFilePath: built/ytcp-firefox.xpi
           zipIgnore: .git|built|built/*|manifest_firefox.json
       - name: upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ytcp-built
           path: built/
