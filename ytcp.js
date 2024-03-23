@@ -61,7 +61,7 @@
 	}
 
 	function enc(url) {
-		if (url?.match(/^https?:\/\/b\.hatena\.ne\.jp\/entry\/s\//)) {
+		if (url?.match(/^https?:\/\/b\.hatena\.ne\.jp\/entry\//)) {
 			return btoa(url)
 				.replace(/=/g, "")
 				.replace(/\+/g, "-")
