@@ -61,7 +61,13 @@
 	}
 
 	function enc(url) {
-		if (url?.match(/^https?:\/\/b\.hatena\.ne\.jp\/entry\//)) {
+		const entry = "^https?:\/\/b\.hatena\.ne\.jp\/entry\/";
+		const entryRegex = new RegExp(entry);
+		const singleRegex = new RegExp(entry + "[0-9]{1,19}\/comment\/");
+		if (url?.match(entryRegex)) {
+			if (url.match(singleRegex)) {
+				return;
+			}
 			return btoa(url)
 				.replace(/=/g, "")
 				.replace(/\+/g, "-")
