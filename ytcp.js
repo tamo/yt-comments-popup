@@ -37,6 +37,7 @@
 	const cache = {};
 	let timeout = undefined;
 	let shown = undefined;
+	let lastelem = undefined;
 	let pressed = false;
 	let mouseX = 0;
 	let mouseY = 0;
@@ -301,6 +302,8 @@
 		mouseY = event.clientY;
 
 		const elem = document.elementFromPoint(mouseX, mouseY);
+		if (elem == lastelem) return;
+		lastelem = elem;
 		dM.groupCollapsed("mousemove");
 		dM.log(event, "element", elem);
 		if (!elem) {
