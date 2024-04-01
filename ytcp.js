@@ -218,7 +218,10 @@
 
 	function setTooltip(anchor, comments, passed = 0) {
 		clearTimeout(timeout);
-		if (pressed) return;
+		if (pressed) {
+			console.log("ctrl keydown", pressed);
+			return;
+		}
 
 		timeout = setTimeout(
 			showTip.bind(null, anchor, comments),
@@ -298,6 +301,11 @@
 	// the only event reliable enough to hide tooltips
 	// others are not useful when mouse moves fast
 	function mouseMoveListener(event) {
+		// keyup often occurs out of document (e.g. Ctrl+F)
+		if (pressed && !event.ctrlKey) {
+			keyUpListener({ keyCode: CTRL });
+		}
+
 		mouseX = event.clientX;
 		mouseY = event.clientY;
 
