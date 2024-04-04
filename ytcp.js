@@ -31,7 +31,7 @@
 		boxShadow: "0 0 5px 2px rgba(255,255,255,0.5)",
 		padding: "3px",
 	};
-	const FALLBACK_URL = undefined; // in a form of "https://example.com/?"
+	const FALLBACK_URL = "https://ytcp.deno.dev/";
 
 	// global variables
 	const cache = {};
@@ -41,7 +41,6 @@
 	let pressed = false;
 	let mouseX = 0;
 	let mouseY = 0;
-	let warned = false;
 
 	// loggers
 	let d, dE, dM;
@@ -65,18 +64,19 @@
 		dM = logLevel > 2 ? console : devnull;
 	}
 
-	async function fetchComments(videoId, apiKey, anchor) {
+	async function fetchComments(videoId, apiKey, anchor, startTime) {
 		const apiParams = new URLSearchParams({
 			...PARAMS,
 			videoId: videoId,
 			key: apiKey,
 		});
-		const url = apiKey.match(/^https:\/\//)
+		const keyisurl = apiKey.match(/^https:\/\//);
+		const url = keyisurl
 			? apiKey + videoId
 			: "https://www.googleapis.com/youtube/v3/commentThreads?" + apiParams;
 
+		let retry = keyisurl;
 		let result;
-		const startTime = Date.now();
 		try {
 			d.groupCollapsed("fetch_" + videoId);
 			d.log("url to fetch", url);
@@ -93,6 +93,7 @@
 				);
 				json = JSON.parse(jsonstr);
 				d.log("json parsed", json);
+				retry = false;
 			} catch (e) {
 				if (!response.ok) {
 					throw new Error("response status " + response.status);
@@ -128,8 +129,10 @@
 		} finally {
 			d.groupEnd();
 		}
-		if (anchor != shown) return; // mouse already left
+		if (anchor != shown) return false; // mouse already left
+		if (retry) return result;
 		setTooltip(anchor, result, Date.now() - startTime);
+		return false;
 	}
 
 	function getVideoId(url) {
@@ -179,21 +182,20 @@
 		storagePromise
 			.then((storage) => {
 				setLoggers(storage.log_level);
-				return storage.api_key || (warned ? FALLBACK_URL : "");
+				return `${storage.api_key}, ${FALLBACK_URL}`;
 			})
-			.then((apiKey) => {
-				if (!apiKey) {
-					warned = true;
-					console.warn("api key is not found");
-					if (confirm("No API key is set.\nOpen options page?")) {
-						chrome.runtime.sendMessage({ action: "options" });
-					}
-					return;
-				}
+			.then(async (apiKeys) => {
 				cache[vid] = "fetching";
 				setTooltip(anchor, commentList("⌛ waiting for comments... ⌛"));
 				// do a fetch even when pressed
-				fetchComments(vid, apiKey, anchor);
+				const startTime = Date.now();
+				let errElem = false;
+				for (const apiKey of apiKeys.split(/, */)) {
+					if (!apiKey) continue;
+					errElem = await fetchComments(vid, apiKey, anchor, startTime);
+					if (!errElem) return;
+				}
+				setTooltip(anchor, errElem, Date.now() - startTime);
 			});
 	}
 
