@@ -281,7 +281,7 @@
 		clearTimeout(timeout);
 		timeout = undefined;
 		shown = undefined;
-		for (let tip of document.body.getElementsByTagName(LOWERTAG)) {
+		for (const tip of document.body.getElementsByTagName(LOWERTAG)) {
 			tip.remove();
 		}
 	}
