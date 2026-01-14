@@ -147,7 +147,6 @@
 		dE.log("mouseenter", event, "target", anchor);
 		if (anchor.tagName !== "A") return;
 		if (anchor.role === "button") return; // e.g. next button on player
-		if (findAncestor(anchor, UPPERTAG)) return;
 
 		const vid = getVideoId(anchor.href);
 		if (!vid) return;
@@ -321,11 +320,13 @@
 			dM.log("mouse pointer is out of browser");
 		} else if (!findAncestor(elem, UPPERTAG)) {
 			const ancestorAnchor = findAncestor(elem, "A");
-			if (shown && (!ancestorAnchor || ancestorAnchor.href !== shown.href)) {
-				dM.log("mouse pointer is not on the tooltip or on the sho anchor");
+			if (ancestorAnchor && shown && ancestorAnchor.href === shown.href) return;
+			if (shown) {
+				dM.log("mouse left the shown tooltip");
 				hideTips();
-			} else if (!shown && ancestorAnchor) {
-				dM.log("maybe a dropped mouseEnter, do it now");
+			}
+			if (ancestorAnchor) {
+				dM.log("mouse enters an anchor");
 				mouseEnterListener({ target: ancestorAnchor });
 			}
 		}
@@ -351,8 +352,6 @@
 		}
 	}
 
-	// set {useCapture: true} to detect all anchors with the single listener
-	document.addEventListener("mouseenter", mouseEnterListener, true);
 	document.addEventListener("mousemove", mouseMoveListener);
 	document.addEventListener("keydown", keyDownListener);
 	document.addEventListener("keyup", keyUpListener);
