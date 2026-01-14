@@ -78,12 +78,6 @@
 
 	function mouseEnterListener(event) {
 		const anchor = event.target;
-		if (
-			!anchor
-			|| anchor.tagName !== "A"
-			|| findAncestor(anchor, UPPERTAG)
-		) return;
-
 		const url = anchor.href;
 		if (
 			!enc(url)
@@ -218,11 +212,9 @@
 		if (!elem) return;
 		if (!findAncestor(elem, UPPERTAG)) {
 			const ancestorAnchor = findAncestor(elem, "A");
-			if (shown && (!ancestorAnchor || ancestorAnchor.href !== shown.href)) {
-				hideTips();
-			} else if (!shown && ancestorAnchor) {
-				mouseEnterListener({ target: ancestorAnchor });
-			}
+			if (ancestorAnchor && shown && ancestorAnchor.href === shown.href) return;
+			if (shown) hideTips();
+			if (ancestorAnchor) mouseEnterListener({ target: ancestorAnchor });
 		}
 	}
 
@@ -245,8 +237,6 @@
 		}
 	}
 
-	// set {useCapture: true} to detect all anchors with the single listener
-	document.addEventListener("mouseenter", mouseEnterListener, true);
 	document.addEventListener("mousemove", mouseMoveListener);
 	document.addEventListener("keydown", keyDownListener);
 	document.addEventListener("keyup", keyUpListener);
