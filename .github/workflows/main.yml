@@ -13,7 +13,7 @@ jobs:
         uses: cardinalby/webext-buildtools-pack-extension-dir-action@v1
         with:
           extensionDir: .
-          zipFilePath: built/ytcp-chrome.zip
+          zipFilePath: built/hbcp-chrome.zip
           zipIgnore: .git|built|built/*|manifest_firefox.json
       - name: modify manifest for firefox
         run: |
@@ -23,10 +23,10 @@ jobs:
         uses: cardinalby/webext-buildtools-pack-extension-dir-action@v1
         with:
           extensionDir: .
-          zipFilePath: built/ytcp-firefox.xpi
+          zipFilePath: built/hbcp-firefox.xpi
           zipIgnore: .git|built|built/*|manifest_firefox.json
       - name: upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ytcp-built
+          name: hbcp-built
           path: built/
