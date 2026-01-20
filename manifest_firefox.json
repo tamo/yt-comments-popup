@@ -1,7 +1,10 @@
 {
 	"browser_specific_settings": {
 		"gecko": {
-			"id": "hbcp@tamo.ddns.org"
+			"id": "hbcp@tamo.ddns.org",
+			"data_collection_permissions": {
+				"required": ["none"]
+			}
 		}
 	},
 	"developer": {
