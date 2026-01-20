@@ -1,7 +1,13 @@
 {
 	"browser_specific_settings": {
 		"gecko": {
-			"id": "ytcp@tamo.ddns.org"
+			"id": "ytcp@tamo.ddns.org",
+			"data_collection_permissions": {
+				"required": [
+					"websiteContent",
+					"websiteActivity"
+				]
+			}
 		}
 	},
 	"developer": {
