@@ -90,7 +90,6 @@
 
 		hideTips(); // this does "shown = undefined"
 		shown = anchor;
-		cutTitles(anchor);
 
 		if (stored) {
 			const cdom = new DOMParser()
@@ -119,6 +118,7 @@
 			cutTitles(child); // even spans can have titles
 		});
 	}
+	document.querySelectorAll("a").forEach((a) => cutTitle(a));
 
 	function setTooltip(anchor, comments, passed = 0) {
 		clearTimeout(timeout);
