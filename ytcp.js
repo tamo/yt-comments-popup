@@ -84,6 +84,7 @@
 			|| url === location.href
 			|| url === shown?.href
 		) return;
+		cutTitles(anchor);
 
 		const stored = sessionStorage.getItem(url);
 		if (stored == "fetching") return;
