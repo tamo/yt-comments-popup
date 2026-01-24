@@ -119,7 +119,8 @@
 			cutTitles(child); // even spans can have titles
 		});
 	}
-	document.querySelectorAll("a").forEach((a) => cutTitle(a));
+	document.querySelectorAll("a[href^='https://b.hatena.ne.jp/entry/']")
+		.forEach((a) => cutTitle(a));
 
 	function setTooltip(anchor, comments, passed = 0) {
 		clearTimeout(timeout);
