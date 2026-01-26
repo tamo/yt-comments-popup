@@ -202,12 +202,15 @@
 	// disable title tooltips
 	function cutTitles(elem) {
 		const title = elem.getAttribute("title");
+		const label = elem.getAttribute("aria-label");
+		const oldtitle = title ? title : label;
 		// elem.classList.contains() doesn't accept regex or glob
 		// ytp-* are player UIs
-		if (title && ![...elem.classList].some((c) => /^ytp-/.test(c))) {
-			elem.setAttribute("oldtitle", title);
+		if (oldtitle && ![...elem.classList].some((c) => /^ytp-/.test(c))) {
+			elem.setAttribute("oldtitle", oldtitle);
 			elem.removeAttribute("title");
-			d.log("title attribute found and renamed to oldtitle", elem);
+			elem.removeAttribute("aria-label");
+			d.log("title or aria-label attribute found and renamed to oldtitle", elem);
 		}
 		const prefix = document.createElement("h3");
 		prefix.textContent = elem.getAttribute("oldtitle");
