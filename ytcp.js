@@ -137,8 +137,11 @@
 
 	function getVideoId(url) {
 		const matchArray = url?.match(/^https:\/\/www\.youtube\.com\/watch\?v=([^&]+)(&.*)?$/);
-		const matchArray2 = url?.match(/^https:\/\/www\.youtube\.com\/[a-z]+\/([^?\/]+)(\?.*)?$/);
-		return matchArray ? matchArray[1] : matchArray2 && matchArray2[1];
+		const matchArray2 = url?.match(/^https:\/\/www\.youtube\.com\/([a-z]+)\/([^?\/]+)(\?.*)?$/);
+		return matchArray ? matchArray[1] : matchArray2 &&
+			matchArray2[1] != "feed" &&
+			matchArray2[1] != "post" &&
+			matchArray2[2];
 	}
 
 	function mouseEnterListener(event) {
