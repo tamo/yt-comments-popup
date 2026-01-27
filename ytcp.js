@@ -204,15 +204,12 @@
 
 	// disable title tooltips
 	function cutTitles(elem) {
-		const title = elem.getAttribute("title");
-		const label = elem.getAttribute("aria-label");
-		const oldtitle = title ? title : label;
-		// elem.classList.contains() doesn't accept regex or glob
-		// ytp-* are player UIs
-		if (oldtitle && ![...elem.classList].some((c) =>
-			/^(ytp-|yt-spec-button-)/.test(c)
-		)) {
-			elem.setAttribute("oldtitle", oldtitle);
+		const role = elem.getAttribute("role") || elem.tagName.toLowerCase();
+		const ignored = (role == "button" || role == "tooltip" || role == "img");
+
+		const title = elem.getAttribute("title") || elem.getAttribute("aria-label");
+		if (!ignored && title) {
+			elem.setAttribute("oldtitle", title);
 			elem.removeAttribute("title");
 			elem.removeAttribute("aria-label");
 			d.log("title or aria-label attribute found and renamed to oldtitle", elem);
