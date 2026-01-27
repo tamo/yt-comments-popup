@@ -120,7 +120,7 @@
 		});
 	}
 	document.querySelectorAll("a[href^='/entry/']")
-		.forEach((a) => cutTitle(a));
+		.forEach((a) => cutTitles(a));
 
 	function setTooltip(anchor, comments, passed = 0) {
 		clearTimeout(timeout);
