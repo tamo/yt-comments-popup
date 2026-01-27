@@ -204,21 +204,24 @@
 
 	// disable title tooltips
 	function cutTitles(elem) {
-		const role = elem.getAttribute("role") || elem.tagName.toLowerCase();
-		const ignored = (role == "button" || role == "tooltip" || role == "img");
-
 		const title = elem.getAttribute("title") || elem.getAttribute("aria-label");
-		if (!ignored && title) {
+		if (title) {
 			elem.setAttribute("oldtitle", title);
 			elem.removeAttribute("title");
 			elem.removeAttribute("aria-label");
 			d.log("title or aria-label attribute found and renamed to oldtitle", elem);
 		}
+
 		const prefix = document.createElement("h3");
-		prefix.textContent = elem.getAttribute("oldtitle");
+		const role = elem.getAttribute("role") || elem.tagName.toLowerCase();
+		const player = [...elem.classList].some((c) => /^ytp-/.test(c));
+		const ignored = (role == "button" || role == "tooltip" || role == "img" || player);
+		if (!ignored) {
+			prefix.textContent = elem.getAttribute("oldtitle");
+		}
 
 		[...elem.children].forEach((child) => {
-			prefix.textContent += cutTitles(child).textContent; // even spans can have titles
+			cutTitles(child).textContent; // even spans can have titles
 		});
 		return prefix;
 	}
