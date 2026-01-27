@@ -209,7 +209,9 @@
 		const oldtitle = title ? title : label;
 		// elem.classList.contains() doesn't accept regex or glob
 		// ytp-* are player UIs
-		if (oldtitle && ![...elem.classList].some((c) => /^ytp-/.test(c))) {
+		if (oldtitle && ![...elem.classList].some((c) =>
+			/^(ytp-|yt-spec-button-)/.test(c)
+		)) {
 			elem.setAttribute("oldtitle", oldtitle);
 			elem.removeAttribute("title");
 			elem.removeAttribute("aria-label");
